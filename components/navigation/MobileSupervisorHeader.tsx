@@ -4,13 +4,14 @@
  */
 
 import { MaterialIcons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../../constants/colors";
 import { SPACING } from "../../constants/spacing";
+import { useRoleContext } from "../../hooks/useRoleContext";
 import { Text } from "../ui/Text";
-import { RoleSwitcherPills } from "./RoleSwitcherPills";
 
 interface MobileSupervisorHeaderProps {
   dockName?: string;
@@ -20,16 +21,12 @@ export const MobileSupervisorHeader: React.FC<MobileSupervisorHeaderProps> = ({
   dockName = "Dock Bay 3",
 }) => {
   const insets = useSafeAreaInsets();
+  const { logout } = useRoleContext();
 
   return (
     <View
       style={[styles.headerContainer, { paddingTop: Math.max(insets.top, 12) }]}
     >
-      {/* Top Role Switcher Row */}
-      <View style={styles.roleNavRow}>
-        <RoleSwitcherPills compact />
-      </View>
-
       <View style={styles.headerContent}>
         {/* Left: Active Bay Indicator */}
         <View style={styles.leftSection}>
@@ -45,20 +42,38 @@ export const MobileSupervisorHeader: React.FC<MobileSupervisorHeaderProps> = ({
           </Text>
         </View>
 
-        {/* Right: Rates Masked Badge */}
+        {/* Right: Rates Masked Badge & Logout Button */}
         <View style={styles.rightSection}>
-          <MaterialIcons
-            name="visibility-off"
-            size={15}
-            color={COLORS.textMuted}
-          />
-          <Text
-            variant="bodySm"
-            color={COLORS.textMuted}
-            style={styles.maskedText}
+          <View style={styles.ratesMaskedBadge}>
+            <MaterialIcons
+              name="visibility-off"
+              size={13}
+              color={COLORS.textMuted}
+            />
+            <Text
+              variant="bodySm"
+              color={COLORS.textMuted}
+              style={styles.maskedText}
+            >
+              Rates masked
+            </Text>
+          </View>
+
+          <Pressable
+            onPress={() => {
+              logout();
+              router.replace("/login" as any);
+            }}
+            style={styles.logoutBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Sign out of terminal"
           >
-            Rates masked
-          </Text>
+            <MaterialIcons
+              name="logout"
+              size={16}
+              color={COLORS.textSecondary}
+            />
+          </Pressable>
         </View>
       </View>
     </View>
@@ -104,9 +119,23 @@ const styles = StyleSheet.create({
   rightSection: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 8,
+  },
+  ratesMaskedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
   },
   maskedText: {
     fontSize: 12,
+  },
+  logoutBtn: {
+    padding: 6,
+    borderRadius: 4,
+    backgroundColor: COLORS.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

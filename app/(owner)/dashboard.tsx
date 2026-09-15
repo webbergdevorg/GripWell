@@ -9,13 +9,13 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import {
-  Alert,
-  Platform,
-  Pressable,
-  TextInput as RNTextInput,
-  ScrollView,
-  StyleSheet,
-  View,
+    Alert,
+    Platform,
+    Pressable,
+    TextInput as RNTextInput,
+    ScrollView,
+    StyleSheet,
+    View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ConsignmentsLogTable } from "../../components/domain/ConsignmentsLogTable";
@@ -27,20 +27,22 @@ import { Text } from "../../components/ui/Text";
 import { COLORS } from "../../constants/colors";
 import { RADIUS, SPACING } from "../../constants/spacing";
 import { useResponsive } from "../../hooks/useResponsive";
+import { useRoleContext } from "../../hooks/useRoleContext";
 import {
-  INITIAL_CREDIT_ACCOUNTS,
-  INITIAL_OWNER_KPIS,
-  INITIAL_RECONCILIATION_RECORDS,
+    INITIAL_CREDIT_ACCOUNTS,
+    INITIAL_OWNER_KPIS,
+    INITIAL_RECONCILIATION_RECORDS,
 } from "../../services/api/mockData";
 import {
-  CreditAccount,
-  OwnerFiscalKPI,
-  ReconciliationRecord,
+    CreditAccount,
+    OwnerFiscalKPI,
+    ReconciliationRecord,
 } from "../../types/models";
 
 export default function OwnerFiscalDashboard() {
   const { isDesktop, isMobile } = useResponsive();
   const insets = useSafeAreaInsets();
+  const { logout } = useRoleContext();
 
   // State
   const [metrics, setMetrics] = useState<OwnerFiscalKPI>(INITIAL_OWNER_KPIS);
@@ -113,7 +115,7 @@ export default function OwnerFiscalDashboard() {
                 />
               </View>
               <Text variant="labelMd" style={styles.brandTitle}>
-                FleetBill Pro
+                Gripwell
               </Text>
             </View>
 
@@ -177,6 +179,16 @@ export default function OwnerFiscalDashboard() {
               variant="primary"
               size="sm"
               onPress={handleExport}
+            />
+            <Button
+              title="Sign Out"
+              icon="logout"
+              variant="secondary"
+              size="sm"
+              onPress={() => {
+                logout();
+                router.replace("/login" as any);
+              }}
             />
           </View>
         </View>
@@ -306,6 +318,24 @@ export default function OwnerFiscalDashboard() {
               >
                 Export
               </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => {
+                logout();
+                router.replace("/login" as any);
+              }}
+              style={({ pressed }: any) => [
+                styles.mobileIconBtn,
+                pressed && styles.pressed,
+              ]}
+              accessibilityLabel="Sign out of terminal"
+            >
+              <MaterialIcons
+                name="logout"
+                size={16}
+                color={COLORS.textSecondary}
+              />
             </Pressable>
           </View>
         </View>

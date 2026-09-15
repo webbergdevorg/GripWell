@@ -1,10 +1,28 @@
 /**
  * Gripwell - Supervisor Route Group Layout
+ * Protected Layout Guard: accessible by Supervisor, Office Admin, and Owner.
  */
 
-import { Stack } from "expo-router";
+import { Redirect, Stack } from "expo-router";
+import { useRoleContext } from "../../hooks/useRoleContext";
+import { hasWorkspaceAccess } from "../../services/auth/devCredentials";
 
 export default function SupervisorLayout() {
+  const { isAuthenticated, authenticatedRole } = useRoleContext();
+
+  // If unauthenticated, redirect to login
+  if (!isAuthenticated) {
+    return <Redirect href="/login" />;
+  }
+
+  // Hierarchical permission check (Supervisor & Owner allowed)
+  if (!hasWorkspaceAccess(authenticatedRole, "supervisor")) {
+    if (authenticatedRole === "office") {
+      return <Redirect href="/(office)/billing" />;
+    }
+    return <Redirect href="/login" />;
+  }
+
   return (
     <Stack
       screenOptions={{

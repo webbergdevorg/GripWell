@@ -7,15 +7,16 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { router, usePathname } from "expo-router";
 import React, { useMemo } from "react";
 import {
-  Platform,
-  Pressable,
-  TextInput as RNTextInput,
-  StyleSheet,
-  View,
+    Platform,
+    Pressable,
+    TextInput as RNTextInput,
+    StyleSheet,
+    View,
 } from "react-native";
 import { COLORS } from "../../constants/colors";
 import { RADIUS, SPACING } from "../../constants/spacing";
 import { useRoleContext } from "../../hooks/useRoleContext";
+import { hasWorkspaceAccess } from "../../services/auth/devCredentials";
 import { Text } from "../ui/Text";
 import { RoleSwitcherPills } from "./RoleSwitcherPills";
 
@@ -29,7 +30,8 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
   activeSection: propActiveSection,
 }) => {
   const pathname = usePathname();
-  const { staff, terminalHub, activeRole, setActiveRole } = useRoleContext();
+  const { staff, terminalHub, activeRole, setActiveRole, logout } =
+    useRoleContext();
 
   // URL / route is the primary source of truth on Web/Desktop,
   // supplemented by propActiveSection or activeRole fallback.
@@ -72,6 +74,32 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
     return activeRole === "office";
   }, [propActiveSection, pathname, activeRole]);
 
+  const isOwnerWorkspace = useMemo(() => {
+    if (propActiveSection) {
+      return propActiveSection === "audit";
+    }
+    if (pathname) {
+      const normalized = pathname.toLowerCase();
+      if (
+        normalized.includes("owner") ||
+        normalized.includes("dashboard") ||
+        normalized.includes("product")
+      ) {
+        return true;
+      }
+      if (
+        normalized.includes("dispatch") ||
+        normalized.includes("gate-pass") ||
+        normalized.includes("billing") ||
+        normalized.includes("credit") ||
+        normalized.includes("advance")
+      ) {
+        return false;
+      }
+    }
+    return activeRole === "owner";
+  }, [propActiveSection, pathname, activeRole]);
+
   return (
     <View style={[styles.headerWrapper, webHeaderStyle]}>
       <View style={styles.container}>
@@ -80,10 +108,12 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
           {/* Brand Logo & Name */}
           <Pressable
             onPress={() => {
-              if (isOfficePage) {
-                router.replace("/(office)/billing" as any);
-              } else {
+              if (activeRole === "supervisor") {
                 router.replace("/(supervisor)/dispatch" as any);
+              } else if (activeRole === "owner") {
+                router.replace("/(owner)/dashboard" as any);
+              } else {
+                router.replace("/(office)/billing" as any);
               }
             }}
             style={styles.brand}
@@ -99,43 +129,94 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
 
           <View style={styles.vDivider} />
 
-          {/* Nav Links */}
+          {/* Nav Links - Rendered by Access Permission */}
           <View style={styles.navLinks}>
-            <Pressable
-              onPress={() => {
-                setActiveRole("supervisor");
-                router.replace("/(supervisor)/dispatch" as any);
-              }}
-              style={[
-                styles.navLinkItem,
-                effectiveSection === "dispatch" && styles.activeNavLinkItem,
-              ]}
-              accessibilityRole="link"
-              accessibilityState={{ selected: effectiveSection === "dispatch" }}
-            >
-              <Text
-                variant="labelSm"
-                color={
-                  effectiveSection === "dispatch"
-                    ? COLORS.textPrimary
-                    : COLORS.textSecondary
-                }
-                style={
-                  effectiveSection === "dispatch"
-                    ? styles.activeNavText
-                    : styles.navText
-                }
+            {/* Dispatch - Hidden on Office Admin pages */}
+            {!isOfficePage && hasWorkspaceAccess(activeRole, "supervisor") && (
+              <Pressable
+                onPress={() => {
+                  if (
+                    activeRole !== "supervisor" &&
+                    hasWorkspaceAccess(activeRole, "supervisor")
+                  ) {
+                    setActiveRole("supervisor");
+                  }
+                  router.replace("/(supervisor)/dispatch" as any);
+                }}
+                style={[
+                  styles.navLinkItem,
+                  effectiveSection === "dispatch" && styles.activeNavLinkItem,
+                ]}
+                accessibilityRole="link"
+                accessibilityState={{
+                  selected: effectiveSection === "dispatch",
+                }}
               >
-                Dispatch
-              </Text>
-            </Pressable>
+                <Text
+                  variant="labelSm"
+                  color={
+                    effectiveSection === "dispatch"
+                      ? COLORS.textPrimary
+                      : COLORS.textSecondary
+                  }
+                  style={
+                    effectiveSection === "dispatch"
+                      ? styles.activeNavText
+                      : styles.navText
+                  }
+                >
+                  Dispatch
+                </Text>
+              </Pressable>
+            )}
 
-            {/* Credit Ledger and Advance Payments: ONLY in Office Admin page */}
-            {isOfficePage && (
+            {/* Office Admin Links - Office, Owner */}
+            {hasWorkspaceAccess(activeRole, "office") && (
               <>
                 <Pressable
                   onPress={() => {
-                    setActiveRole("office");
+                    if (
+                      activeRole !== "office" &&
+                      hasWorkspaceAccess(activeRole, "office")
+                    ) {
+                      setActiveRole("office");
+                    }
+                    router.replace("/(office)/billing" as any);
+                  }}
+                  style={[
+                    styles.navLinkItem,
+                    effectiveSection === "billing" && styles.activeNavLinkItem,
+                  ]}
+                  accessibilityRole="link"
+                  accessibilityState={{
+                    selected: effectiveSection === "billing",
+                  }}
+                >
+                  <Text
+                    variant="labelSm"
+                    color={
+                      effectiveSection === "billing"
+                        ? COLORS.textPrimary
+                        : COLORS.textSecondary
+                    }
+                    style={
+                      effectiveSection === "billing"
+                        ? styles.activeNavText
+                        : styles.navText
+                    }
+                  >
+                    Billing
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => {
+                    if (
+                      activeRole !== "office" &&
+                      hasWorkspaceAccess(activeRole, "office")
+                    ) {
+                      setActiveRole("office");
+                    }
                     router.replace("/(office)/credits" as any);
                   }}
                   style={[
@@ -166,7 +247,12 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
 
                 <Pressable
                   onPress={() => {
-                    setActiveRole("office");
+                    if (
+                      activeRole !== "office" &&
+                      hasWorkspaceAccess(activeRole, "office")
+                    ) {
+                      setActiveRole("office");
+                    }
                     router.replace("/(office)/advances" as any);
                   }}
                   style={[
@@ -196,13 +282,47 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
                 </Pressable>
               </>
             )}
+
+            {/* Owner Links - Owner only */}
+            {hasWorkspaceAccess(activeRole, "owner") && (
+              <Pressable
+                onPress={() => {
+                  setActiveRole("owner");
+                  router.replace("/(owner)/dashboard" as any);
+                }}
+                style={[
+                  styles.navLinkItem,
+                  effectiveSection === "audit" && styles.activeNavLinkItem,
+                ]}
+                accessibilityRole="link"
+                accessibilityState={{ selected: effectiveSection === "audit" }}
+              >
+                <Text
+                  variant="labelSm"
+                  color={
+                    effectiveSection === "audit"
+                      ? COLORS.textPrimary
+                      : COLORS.textSecondary
+                  }
+                  style={
+                    effectiveSection === "audit"
+                      ? styles.activeNavText
+                      : styles.navText
+                  }
+                >
+                  Executive Fiscal
+                </Text>
+              </Pressable>
+            )}
           </View>
         </View>
 
-        {/* Center: Role Switcher */}
-        <View style={styles.centerSection}>
-          <RoleSwitcherPills compact />
-        </View>
+        {/* Center: Role Switcher - kept ONLY in Owner Workspace */}
+        {isOwnerWorkspace && (
+          <View style={styles.centerSection}>
+            <RoleSwitcherPills compact />
+          </View>
+        )}
 
         {/* Right: Search, Terminal Hub, Profile */}
         <View style={styles.rightSection}>
@@ -247,6 +367,34 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
               {staff.name}
             </Text>
           </View>
+
+          {/* Sign Out Button */}
+          <Pressable
+            onPress={() => {
+              logout();
+              router.replace("/login" as any);
+            }}
+            style={({ pressed, hovered }: any) => [
+              styles.signOutBtn,
+              hovered && styles.signOutBtnHover,
+              pressed && styles.signOutBtnPressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Sign out of terminal"
+          >
+            <MaterialIcons
+              name="logout"
+              size={14}
+              color={COLORS.textSecondary}
+            />
+            <Text
+              variant="labelSm"
+              color={COLORS.textSecondary}
+              style={styles.signOutText}
+            >
+              Sign Out
+            </Text>
+          </Pressable>
         </View>
       </View>
     </View>
@@ -417,5 +565,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "500",
     color: COLORS.textPrimary,
+  },
+  signOutBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderRadius: RADIUS.xs,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surfaceSecondary,
+    ...Platform.select({
+      web: {
+        cursor: "pointer",
+        transitionProperty: "background-color, border-color",
+        transitionDuration: "150ms",
+      },
+    }),
+  },
+  signOutBtnHover: {
+    backgroundColor: "#E2E8F0",
+    borderColor: "#CBD5E1",
+  },
+  signOutBtnPressed: {
+    opacity: 0.8,
+  },
+  signOutText: {
+    fontSize: 11,
+    fontWeight: "500",
   },
 });

@@ -18,7 +18,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GatePassCard } from "../../components/domain/GatePassCard";
 import { DesktopHeader } from "../../components/navigation/DesktopHeader";
-import { RoleSwitcherPills } from "../../components/navigation/RoleSwitcherPills";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { Text } from "../../components/ui/Text";
@@ -338,11 +337,6 @@ export default function GatePassScreen() {
       <View
         style={[styles.mobileTopBar, { paddingTop: Math.max(insets.top, 12) }]}
       >
-        {/* Top Role Switcher Row */}
-        <View style={styles.mobileRoleRow}>
-          <RoleSwitcherPills compact />
-        </View>
-
         {/* Title Bar with Back Nav & Status */}
         <View style={styles.mobileTitleRow}>
           <Pressable
@@ -531,11 +525,18 @@ const styles = StyleSheet.create({
   },
   filterTabPillActive: {
     backgroundColor: COLORS.surface,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 1,
+    ...Platform.select({
+      web: {
+        boxShadow: "0 1px 2px rgba(0, 0, 0, 0.08)",
+      },
+      default: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 2,
+        elevation: 1,
+      },
+    }),
   },
   filterTabText: {
     fontSize: 11,

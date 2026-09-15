@@ -534,11 +534,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    ...Platform.select({
+      web: {
+        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
+      },
+      default: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+      },
+    }),
   },
   desktopCard: {
     maxWidth: 960,

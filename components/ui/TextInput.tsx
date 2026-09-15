@@ -50,11 +50,11 @@ export const TextInput: React.FC<TextInputProps> = ({
         containerStyle,
       ]}
     >
-      {prefix && (
+      {prefix ? (
         <Text variant="labelSm" color={COLORS.textMuted} style={styles.prefix}>
           {prefix}
         </Text>
-      )}
+      ) : null}
       <RNTextInput
         style={[
           styles.input,

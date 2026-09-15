@@ -15,12 +15,12 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { router, usePathname } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  Alert,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
+    Alert,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AdvanceDepositCard } from "../../components/domain/AdvanceDepositCard";
@@ -28,21 +28,20 @@ import { CreditKPIHeader } from "../../components/domain/CreditKPIHeader";
 import { CreditLoadCard } from "../../components/domain/CreditLoadCard";
 import { RecordAdvanceDrawer } from "../../components/domain/RecordAdvanceDrawer";
 import { SettleCreditModal } from "../../components/domain/SettleCreditModal";
-import { RoleSwitcherPills } from "../../components/navigation/RoleSwitcherPills";
 import { Text } from "../../components/ui/Text";
 import { COLORS } from "../../constants/colors";
 import {
-  INITIAL_ADVANCE_DEPOSITS,
-  INITIAL_CREDIT_KPIS,
-  INITIAL_CREDIT_LOADS,
+    INITIAL_ADVANCE_DEPOSITS,
+    INITIAL_CREDIT_KPIS,
+    INITIAL_CREDIT_LOADS,
 } from "../../constants/mockCreditLedger";
 import { RADIUS, SPACING } from "../../constants/spacing";
 import { useResponsive } from "../../hooks/useResponsive";
 import { useRoleContext } from "../../hooks/useRoleContext";
 import {
-  AdvanceDepositItem,
-  CreditLedgerItem,
-  CreditLedgerKPISummary,
+    AdvanceDepositItem,
+    CreditLedgerItem,
+    CreditLedgerKPISummary,
 } from "../../types/models";
 
 export default function CreditLedgerScreen() {
@@ -232,12 +231,13 @@ export default function CreditLedgerScreen() {
                 onPress={() => {
                   setActiveRole("supervisor");
                   router.replace("/(supervisor)/dispatch" as any);
+                  router.replace("/(office)/billing" as any);
                 }}
                 style={styles.navTab}
                 accessibilityRole="link"
               >
                 <Text variant="labelMd" color={COLORS.textSecondary}>
-                  Dispatch
+                  Dispatch Billing
                 </Text>
               </Pressable>
               <Pressable
@@ -287,11 +287,6 @@ export default function CreditLedgerScreen() {
                 </Text>
               </Pressable>
             </View>
-          </View>
-
-          {/* Center: Role Switcher */}
-          <View style={styles.desktopRoleCenter}>
-            <RoleSwitcherPills compact />
           </View>
 
           {/* Right: Operational Status, Notifications & Profile */}
@@ -593,10 +588,6 @@ export default function CreditLedgerScreen() {
       <View
         style={[styles.mobileTopBar, { paddingTop: Math.max(insets.top, 10) }]}
       >
-        <View style={styles.mobileRoleRow}>
-          <RoleSwitcherPills compact />
-        </View>
-
         <View style={styles.mobileHeaderRow}>
           <View style={styles.mobileHeaderLeft}>
             <MaterialIcons
