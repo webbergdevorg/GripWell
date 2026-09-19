@@ -11,8 +11,8 @@ import { COLORS } from "../../constants/colors";
 import { RADIUS, SPACING } from "../../constants/spacing";
 import { useRoleContext } from "../../hooks/useRoleContext";
 import {
-    DEV_ACCOUNTS,
-    validateCredentials,
+  DEV_ACCOUNTS,
+  validateCredentials,
 } from "../../services/auth/devCredentials";
 import { UserRole } from "../../types/roles";
 import { Badge } from "../ui/Badge";

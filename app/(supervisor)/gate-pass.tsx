@@ -8,12 +8,12 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import {
-    Alert,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    View,
+  Alert,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GatePassCard } from "../../components/domain/GatePassCard";
@@ -24,8 +24,8 @@ import { Text } from "../../components/ui/Text";
 import { TextInput } from "../../components/ui/TextInput";
 import { COLORS } from "../../constants/colors";
 import {
-    DEFAULT_GATE_PASS,
-    RECENT_GATE_PASSES,
+  DEFAULT_GATE_PASS,
+  RECENT_GATE_PASSES,
 } from "../../constants/mockGatePass";
 import { RADIUS, SPACING } from "../../constants/spacing";
 import { useResponsive } from "../../hooks/useResponsive";

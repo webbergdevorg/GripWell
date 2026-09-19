@@ -5,23 +5,22 @@
  */
 
 import { MaterialIcons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import { useState } from "react";
+import { type Href, router } from "expo-router";
+import { useEffect, useState } from "react";
 import {
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    View,
+  Alert,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AdvanceOffsetStrip } from "../../components/domain/AdvanceOffsetStrip";
-import { CreditLedgerMobileEmbed } from "../../components/domain/CreditLedgerMobileEmbed";
 import { KPIStrip } from "../../components/domain/KPICard";
 import { LineItemRow } from "../../components/domain/LineItemRow";
 import { FileUploadDropzone } from "../../components/forms/FileUploadDropzone";
 import { PaymentModeSelector } from "../../components/forms/PaymentModeSelector";
-import { DesktopHeader } from "../../components/navigation/DesktopHeader";
+import { OfficeWorkspaceShell } from "../../components/navigation/OfficeWorkspaceShell";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { Text } from "../../components/ui/Text";
@@ -29,10 +28,9 @@ import { TextInput } from "../../components/ui/TextInput";
 import { COLORS } from "../../constants/colors";
 import { RADIUS, SPACING } from "../../constants/spacing";
 import { useResponsive } from "../../hooks/useResponsive";
-import { useRoleContext } from "../../hooks/useRoleContext";
 import {
-    INITIAL_CONSIGNMENTS,
-    INITIAL_KPIS,
+  INITIAL_CONSIGNMENTS,
+  INITIAL_KPIS,
 } from "../../services/api/mockData";
 import { Consignment, LineItem, PaymentMode } from "../../types/models";
 import { formatINR } from "../../utils/currency";
@@ -41,8 +39,6 @@ type FilterTab = "all" | "pending" | "credit" | "advances";
 
 export default function OfficeBillingWorkspace() {
   const { isDesktop, isMobile } = useResponsive();
-  const insets = useSafeAreaInsets();
-  const { activeRole, logout } = useRoleContext();
 
   const [consignments, setConsignments] =
     useState<Consignment[]>(INITIAL_CONSIGNMENTS);
@@ -51,65 +47,127 @@ export default function OfficeBillingWorkspace() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved">("idle");
   const [voidNotes, setVoidNotes] = useState<string>("");
-  const [activeMobileTab, setActiveMobileTab] = useState<"billing" | "credits">(
-    "billing",
-  );
 
-  // Currently active selected consignment
+  // Filtered consignments list: honors tab filter and search query simultaneously
+  const filteredConsignments = consignments.filter((c) => {
+    if (activeFilter === "pending") {
+      if (c.status === "settled") return false;
+    } else if (activeFilter === "credit") {
+      if (c.selectedPaymentMode !== "credit") return false;
+    } else if (activeFilter === "advances") {
+      if (!((c.appliedAdvance ?? 0) > 0 || (c.availableAdvance ?? 0) > 0)) {
+        return false;
+      }
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const matches =
+        (c.customerName || "").toLowerCase().includes(q) ||
+        (c.id || "").toLowerCase().includes(q) ||
+        (c.driverName || "").toLowerCase().includes(q) ||
+        (c.dockNumber || "").toLowerCase().includes(q) ||
+        (c.referenceNumber || "").toLowerCase().includes(q);
+      if (!matches) return false;
+    }
+
+    return true;
+  });
+
+  // Currently active selected consignment (with safe fallback within active filter)
   const activeConsignment =
-    consignments.find((c) => c.id === selectedLoadId) || consignments[0];
+    filteredConsignments.find((c) => c.id === selectedLoadId) ||
+    filteredConsignments[0] ||
+    consignments.find((c) => c.id === selectedLoadId) ||
+    consignments[0];
+
+  // Synchronize notes field whenever active consignment changes
+  useEffect(() => {
+    if (activeConsignment) {
+      setVoidNotes(activeConsignment.notes || "");
+    }
+  }, [activeConsignment?.id]);
+
+  // Dynamic tab counts
+  const pendingCount = consignments.filter(
+    (c) => c.status !== "settled",
+  ).length;
+  const creditCount = consignments.filter(
+    (c) => c.selectedPaymentMode === "credit",
+  ).length;
+  const advancesCount = consignments.filter(
+    (c) => (c.appliedAdvance ?? 0) > 0 || (c.availableAdvance ?? 0) > 0,
+  ).length;
 
   // Financial calculations
   const calculateGross = (items: LineItem[]) => {
-    return items.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
+    return items.reduce(
+      (acc, item) =>
+        acc + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0),
+      0,
+    );
   };
 
-  const grossTotal = calculateGross(activeConsignment.items);
-  const appliedAdvance = activeConsignment.appliedAdvance;
+  const grossTotal = activeConsignment
+    ? calculateGross(activeConsignment.items)
+    : 0;
+  const appliedAdvance = activeConsignment?.appliedAdvance ?? 0;
   const netPayable = Math.max(0, grossTotal - appliedAdvance);
+
+  // Helper to mutate active consignment items and update summary & totals
+  const updateConsignmentItems = (updatedItems: LineItem[]) => {
+    if (!activeConsignment) return;
+    const newGross = calculateGross(updatedItems);
+    const summary = updatedItems
+      .map((it) => `${it.description} (${it.quantity})`)
+      .join(", ");
+
+    setConsignments((prev) =>
+      prev.map((c) => {
+        if (c.id !== activeConsignment.id) return c;
+        const maxAvail = c.availableAdvance ?? 0;
+        const effectiveAdvance = Math.min(
+          Math.max(0, c.appliedAdvance ?? 0),
+          maxAvail,
+          newGross,
+        );
+        return {
+          ...c,
+          items: updatedItems,
+          itemsSummary: summary || c.itemsSummary,
+          grossTotal: newGross,
+          appliedAdvance: effectiveAdvance,
+          netPayable: Math.max(0, newGross - effectiveAdvance),
+        };
+      }),
+    );
+  };
 
   // Line item mutation handlers
   const handleUpdateItemQty = (itemId: string, newQty: number) => {
-    setConsignments((prev) =>
-      prev.map((c) => {
-        if (c.id !== activeConsignment.id) return c;
-        const updatedItems = c.items.map((it) =>
-          it.id === itemId
-            ? { ...it, quantity: newQty, total: newQty * it.unitPrice }
-            : it,
-        );
-        const newGross = calculateGross(updatedItems);
-        return {
-          ...c,
-          items: updatedItems,
-          grossTotal: newGross,
-          netPayable: Math.max(0, newGross - c.appliedAdvance),
-        };
-      }),
+    if (!activeConsignment) return;
+    const safeQty = Math.max(0, isNaN(newQty) ? 0 : newQty);
+    const updatedItems = activeConsignment.items.map((it) =>
+      it.id === itemId
+        ? { ...it, quantity: safeQty, total: safeQty * it.unitPrice }
+        : it,
     );
+    updateConsignmentItems(updatedItems);
   };
 
   const handleUpdateItemPrice = (itemId: string, newPrice: number) => {
-    setConsignments((prev) =>
-      prev.map((c) => {
-        if (c.id !== activeConsignment.id) return c;
-        const updatedItems = c.items.map((it) =>
-          it.id === itemId
-            ? { ...it, unitPrice: newPrice, total: it.quantity * newPrice }
-            : it,
-        );
-        const newGross = calculateGross(updatedItems);
-        return {
-          ...c,
-          items: updatedItems,
-          grossTotal: newGross,
-          netPayable: Math.max(0, newGross - c.appliedAdvance),
-        };
-      }),
+    if (!activeConsignment) return;
+    const safePrice = Math.max(0, isNaN(newPrice) ? 0 : newPrice);
+    const updatedItems = activeConsignment.items.map((it) =>
+      it.id === itemId
+        ? { ...it, unitPrice: safePrice, total: it.quantity * safePrice }
+        : it,
     );
+    updateConsignmentItems(updatedItems);
   };
 
   const handleAddItem = () => {
+    if (!activeConsignment) return;
     const newItem: LineItem = {
       id: `li-${Date.now()}`,
       description: "Standard Freight Handling Box",
@@ -119,43 +177,29 @@ export default function OfficeBillingWorkspace() {
       unitPrice: 500,
       total: 500,
     };
-    setConsignments((prev) =>
-      prev.map((c) => {
-        if (c.id !== activeConsignment.id) return c;
-        const updatedItems = [...c.items, newItem];
-        const newGross = calculateGross(updatedItems);
-        return {
-          ...c,
-          items: updatedItems,
-          grossTotal: newGross,
-          netPayable: Math.max(0, newGross - c.appliedAdvance),
-        };
-      }),
-    );
+    updateConsignmentItems([...activeConsignment.items, newItem]);
   };
 
   const handleDeleteItem = (itemId: string) => {
-    setConsignments((prev) =>
-      prev.map((c) => {
-        if (c.id !== activeConsignment.id) return c;
-        const updatedItems = c.items.filter((it) => it.id !== itemId);
-        const newGross = calculateGross(updatedItems);
-        return {
-          ...c,
-          items: updatedItems,
-          grossTotal: newGross,
-          netPayable: Math.max(0, newGross - c.appliedAdvance),
-        };
-      }),
+    if (!activeConsignment) return;
+    const updatedItems = activeConsignment.items.filter(
+      (it) => it.id !== itemId,
     );
+    updateConsignmentItems(updatedItems);
   };
 
-  // Advance offset handlers
+  // Advance offset handlers (strictly using ?? 0 rather than falsy || 5000)
   const handleApplyAdvance = (amount: number) => {
+    if (!activeConsignment) return;
     setConsignments((prev) =>
       prev.map((c) => {
         if (c.id !== activeConsignment.id) return c;
-        const effectiveAdvance = Math.min(amount, c.availableAdvance || 5000);
+        const maxAvailable = c.availableAdvance ?? 0;
+        const effectiveAdvance = Math.min(
+          Math.max(0, amount),
+          maxAvailable,
+          c.grossTotal,
+        );
         return {
           ...c,
           appliedAdvance: effectiveAdvance,
@@ -166,6 +210,7 @@ export default function OfficeBillingWorkspace() {
   };
 
   const handleRemoveAdvance = () => {
+    if (!activeConsignment) return;
     setConsignments((prev) =>
       prev.map((c) => {
         if (c.id !== activeConsignment.id) return c;
@@ -180,6 +225,7 @@ export default function OfficeBillingWorkspace() {
 
   // Payment mode handler
   const handleSelectPaymentMode = (mode: PaymentMode) => {
+    if (!activeConsignment) return;
     setConsignments((prev) =>
       prev.map((c) =>
         c.id === activeConsignment.id ? { ...c, selectedPaymentMode: mode } : c,
@@ -187,12 +233,25 @@ export default function OfficeBillingWorkspace() {
     );
   };
 
+  // Payment proof handler
+  const handleUploadProof = (proofUri: string) => {
+    if (!activeConsignment) return;
+    setConsignments((prev) =>
+      prev.map((c) =>
+        c.id === activeConsignment.id ? { ...c, paymentProofUri: proofUri } : c,
+      ),
+    );
+  };
+
   // Save to Ledger handler
   const handleSaveToLedger = () => {
+    if (!activeConsignment) return;
     setSaveStatus("saved");
     setConsignments((prev) =>
       prev.map((c) =>
-        c.id === activeConsignment.id ? { ...c, status: "settled" } : c,
+        c.id === activeConsignment.id
+          ? { ...c, status: "settled", notes: voidNotes }
+          : c,
       ),
     );
     setTimeout(() => {
@@ -200,339 +259,277 @@ export default function OfficeBillingWorkspace() {
     }, 2000);
   };
 
-  // Filtered consignments list
-  const filteredConsignments = consignments.filter((c) => {
-    if (activeFilter === "pending")
-      return c.status === "uncalibrated" || c.status === "pending";
-    if (activeFilter === "credit") return c.selectedPaymentMode === "credit";
-    if (activeFilter === "advances")
-      return c.appliedAdvance > 0 || c.availableAdvance > 0;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      return (
-        c.customerName.toLowerCase().includes(q) ||
-        c.id.toLowerCase().includes(q) ||
-        c.driverName.toLowerCase().includes(q)
+  // Print Pro-Forma handler (cross-platform safe)
+  const handlePrintProForma = () => {
+    if (!activeConsignment) return;
+    if (Platform.OS === "web") {
+      if (typeof window !== "undefined" && window.alert) {
+        window.alert(
+          `Printing Pro-Forma Invoice for Load ${activeConsignment.id}...`,
+        );
+      }
+    } else {
+      Alert.alert(
+        "Print Pro-Forma",
+        `Printing Pro-Forma Invoice for Load ${activeConsignment.id}. Print job sent to terminal printer.`,
       );
     }
-    return true;
-  });
+  };
 
   return (
-    <View style={styles.safeArea}>
-      {/* Desktop Header */}
-      {isDesktop && (
-        <DesktopHeader
-          activeSection="billing"
-          onSearchChange={setSearchQuery}
-        />
-      )}
+    <OfficeWorkspaceShell
+      activeTab="billing"
+      searchQuery={searchQuery}
+      onSearchChange={setSearchQuery}
+      searchPlaceholder="Search customer, load #, driver..."
+    >
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          !isDesktop && { paddingBottom: 85 },
+        ]}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Desktop Page Title & Actions Strip */}
+        {isDesktop && (
+          <View style={styles.desktopWorkspaceHeader}>
+            <View style={styles.desktopTitleRow}>
+              <View>
+                <Text
+                  variant="labelSm"
+                  color={COLORS.textMuted}
+                  style={styles.desktopSubtitle}
+                >
+                  FINANCE & TERMINAL OPERATIONS
+                </Text>
+                <Text variant="headlineLg" style={styles.desktopMainTitle}>
+                  Office Billing & Settlement Ledger
+                </Text>
+              </View>
 
-      {/* Sticky Mobile/Tablet Header with Role Switcher */}
-      {!isDesktop && (
-        <View
-          style={[
-            styles.mobileTopBar,
-            { paddingTop: Math.max(insets.top, 12) },
-          ]}
-        >
-          {/* Title & Quick Actions */}
-          <View style={styles.mobileTitleRow}>
-            <View style={{ flex: 1 }}>
-              <Text
-                variant="headlineSm"
-                color={COLORS.textPrimary}
-                style={{ fontWeight: "700" }}
-              >
-                {activeMobileTab === "credits"
-                  ? "Credit Ledger & Advances"
-                  : "Office Billing"}
-              </Text>
-              <Text
-                variant="bodySm"
-                color={COLORS.textSecondary}
-                style={{ fontSize: 11 }}
-              >
-                {activeMobileTab === "credits"
-                  ? "Receivables monitoring & customer deposits"
-                  : "Reconcile settlements & calibrate rates"}
-              </Text>
-            </View>
-
-            <Pressable
-              onPress={() => {
-                logout();
-                router.replace("/login" as any);
-              }}
-              style={styles.mobileLogoutBtn}
-              accessibilityRole="button"
-              accessibilityLabel="Sign out of terminal"
-            >
-              <MaterialIcons
-                name="logout"
-                size={16}
-                color={COLORS.textSecondary}
-              />
-            </Pressable>
-          </View>
-        </View>
-      )}
-
-      {/* Mobile Credit Ledger Tab Embedded View */}
-      {!isDesktop && activeMobileTab === "credits" && (
-        <CreditLedgerMobileEmbed />
-      )}
-
-      {/* Main Billing Workspace (Desktop OR Mobile when activeMobileTab is "billing") */}
-      {(isDesktop || activeMobileTab === "billing") && (
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={[
-            styles.scrollContent,
-            !isDesktop && { paddingBottom: 85 },
-          ]}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Desktop Page Title & Actions Strip */}
-          {isDesktop && (
-            <View style={styles.desktopWorkspaceHeader}>
-              <View style={styles.desktopTitleRow}>
-                <View>
+              <View style={styles.desktopHeaderControls}>
+                <Pressable
+                  onPress={() => router.replace("/(office)/credits" as Href)}
+                  style={styles.creditLedgerShortcut}
+                >
+                  <MaterialIcons
+                    name="account-balance-wallet"
+                    size={15}
+                    color={COLORS.secondary}
+                  />
                   <Text
                     variant="labelSm"
-                    color={COLORS.textMuted}
-                    style={styles.desktopSubtitle}
+                    style={{ color: COLORS.secondary, fontWeight: "600" }}
                   >
-                    FINANCE & TERMINAL OPERATIONS
+                    Credit & Advances
                   </Text>
-                  <Text variant="headlineLg" style={styles.desktopMainTitle}>
-                    Office Billing & Settlement Ledger
-                  </Text>
-                </View>
+                </Pressable>
 
-                <View style={styles.desktopHeaderControls}>
+                {/* Filter Tabs */}
+                <View style={styles.desktopFilterTabs}>
                   <Pressable
-                    onPress={() => router.replace("/(office)/credits" as any)}
-                    style={styles.creditLedgerShortcut}
+                    onPress={() => setActiveFilter("all")}
+                    style={[
+                      styles.desktopTabPill,
+                      activeFilter === "all" && styles.desktopTabPillActive,
+                    ]}
                   >
-                    <MaterialIcons
-                      name="account-balance-wallet"
-                      size={15}
-                      color={COLORS.secondary}
-                    />
                     <Text
                       variant="labelSm"
-                      style={{ color: COLORS.secondary, fontWeight: "600" }}
+                      style={[
+                        styles.desktopTabText,
+                        activeFilter === "all" && styles.desktopTabTextActive,
+                      ]}
                     >
-                      Credit & Advances
+                      All Customers ({consignments.length})
                     </Text>
                   </Pressable>
 
-                  {/* Filter Tabs */}
-                  <View style={styles.desktopFilterTabs}>
-                    <Pressable
-                      onPress={() => setActiveFilter("all")}
+                  <Pressable
+                    onPress={() => setActiveFilter("pending")}
+                    style={[
+                      styles.desktopTabPill,
+                      activeFilter === "pending" && styles.desktopTabPillActive,
+                    ]}
+                  >
+                    <Text
+                      variant="labelSm"
                       style={[
-                        styles.desktopTabPill,
-                        activeFilter === "all" && styles.desktopTabPillActive,
-                      ]}
-                    >
-                      <Text
-                        variant="labelSm"
-                        style={[
-                          styles.desktopTabText,
-                          activeFilter === "all" && styles.desktopTabTextActive,
-                        ]}
-                      >
-                        All Customers ({consignments.length})
-                      </Text>
-                    </Pressable>
-
-                    <Pressable
-                      onPress={() => setActiveFilter("pending")}
-                      style={[
-                        styles.desktopTabPill,
+                        styles.desktopTabText,
                         activeFilter === "pending" &&
-                          styles.desktopTabPillActive,
+                          styles.desktopTabTextActive,
                       ]}
                     >
-                      <Text
-                        variant="labelSm"
-                        style={[
-                          styles.desktopTabText,
-                          activeFilter === "pending" &&
-                            styles.desktopTabTextActive,
-                        ]}
-                      >
-                        Pending Verification (1)
-                      </Text>
-                    </Pressable>
+                      Pending Verification ({pendingCount})
+                    </Text>
+                  </Pressable>
 
-                    <Pressable
-                      onPress={() => setActiveFilter("credit")}
+                  <Pressable
+                    onPress={() => setActiveFilter("credit")}
+                    style={[
+                      styles.desktopTabPill,
+                      activeFilter === "credit" && styles.desktopTabPillActive,
+                    ]}
+                  >
+                    <Text
+                      variant="labelSm"
                       style={[
-                        styles.desktopTabPill,
+                        styles.desktopTabText,
                         activeFilter === "credit" &&
-                          styles.desktopTabPillActive,
+                          styles.desktopTabTextActive,
                       ]}
                     >
-                      <Text
-                        variant="labelSm"
-                        style={[
-                          styles.desktopTabText,
-                          activeFilter === "credit" &&
-                            styles.desktopTabTextActive,
-                        ]}
-                      >
-                        Credit Accounts (1)
-                      </Text>
-                    </Pressable>
+                      Credit Accounts ({creditCount})
+                    </Text>
+                  </Pressable>
 
-                    <Pressable
-                      onPress={() => setActiveFilter("advances")}
+                  <Pressable
+                    onPress={() => setActiveFilter("advances")}
+                    style={[
+                      styles.desktopTabPill,
+                      activeFilter === "advances" &&
+                        styles.desktopTabPillActive,
+                    ]}
+                  >
+                    <Text
+                      variant="labelSm"
                       style={[
-                        styles.desktopTabPill,
+                        styles.desktopTabText,
                         activeFilter === "advances" &&
-                          styles.desktopTabPillActive,
+                          styles.desktopTabTextActive,
                       ]}
                     >
-                      <Text
-                        variant="labelSm"
-                        style={[
-                          styles.desktopTabText,
-                          activeFilter === "advances" &&
-                            styles.desktopTabTextActive,
-                        ]}
-                      >
-                        Customer Advances
-                      </Text>
-                    </Pressable>
-                  </View>
+                      Customer Advances ({advancesCount})
+                    </Text>
+                  </Pressable>
                 </View>
               </View>
-
-              {/* Clean Flat KPI Row */}
-              <KPIStrip summary={INITIAL_KPIS} isMobile={false} />
             </View>
-          )}
 
-          {/* Mobile Metrics Strip & Mobile Tabs */}
-          {isMobile && (
-            <View style={styles.mobileMetricsSection}>
-              <KPIStrip summary={INITIAL_KPIS} isMobile={true} />
+            {/* Clean Flat KPI Row */}
+            <KPIStrip summary={INITIAL_KPIS} isMobile={false} />
+          </View>
+        )}
 
-              {/* Underline Filter Tabs */}
-              <View style={styles.mobileFilterTabs}>
-                <Pressable
-                  onPress={() => setActiveFilter("all")}
-                  style={[
-                    styles.mobileTab,
-                    activeFilter === "all" && styles.mobileTabActive,
-                  ]}
-                >
-                  <Text
-                    variant="labelSm"
-                    style={[
-                      styles.mobileTabText,
-                      activeFilter === "all" && styles.mobileTabTextActive,
-                    ]}
-                  >
-                    All ({consignments.length})
-                  </Text>
-                </Pressable>
+        {/* Mobile Metrics Strip & Mobile Tabs */}
+        {isMobile && (
+          <View style={styles.mobileMetricsSection}>
+            <KPIStrip summary={INITIAL_KPIS} isMobile={true} />
 
-                <Pressable
-                  onPress={() => setActiveFilter("pending")}
-                  style={[
-                    styles.mobileTab,
-                    activeFilter === "pending" && styles.mobileTabActive,
-                  ]}
-                >
-                  <Text
-                    variant="labelSm"
-                    style={[
-                      styles.mobileTabText,
-                      activeFilter === "pending" && styles.mobileTabTextActive,
-                    ]}
-                  >
-                    Pending (1)
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => setActiveFilter("credit")}
-                  style={[
-                    styles.mobileTab,
-                    activeFilter === "credit" && styles.mobileTabActive,
-                  ]}
-                >
-                  <Text
-                    variant="labelSm"
-                    style={[
-                      styles.mobileTabText,
-                      activeFilter === "credit" && styles.mobileTabTextActive,
-                    ]}
-                  >
-                    Credit (1)
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => setActiveFilter("advances")}
-                  style={[
-                    styles.mobileTab,
-                    activeFilter === "advances" && styles.mobileTabActive,
-                  ]}
-                >
-                  <Text
-                    variant="labelSm"
-                    style={[
-                      styles.mobileTabText,
-                      activeFilter === "advances" && styles.mobileTabTextActive,
-                    ]}
-                  >
-                    Advances
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          )}
-
-          {/* Main Content Area */}
-          <View
-            style={
-              isDesktop ? styles.desktopMainGrid : styles.mobileMainContainer
-            }
-          >
-            {/* Left / Top: Consignments List */}
-            <View
-              style={
-                isDesktop ? styles.desktopLeftCol : styles.mobileListSection
-              }
-            >
-              <View style={styles.listHeaderRow}>
+            {/* Underline Filter Tabs */}
+            <View style={styles.mobileFilterTabs}>
+              <Pressable
+                onPress={() => setActiveFilter("all")}
+                style={[
+                  styles.mobileTab,
+                  activeFilter === "all" && styles.mobileTabActive,
+                ]}
+              >
                 <Text
                   variant="labelSm"
-                  color={COLORS.textSecondary}
-                  style={styles.sectionHeaderTitle}
+                  style={[
+                    styles.mobileTabText,
+                    activeFilter === "all" && styles.mobileTabTextActive,
+                  ]}
                 >
-                  DOCK CUSTOMERS ({filteredConsignments.length})
+                  All ({consignments.length})
                 </Text>
-                <Text variant="bodySm" color={COLORS.textMuted}>
-                  {isMobile ? "1 selected" : "Click to calibrate"}
-                </Text>
-              </View>
+              </Pressable>
 
-              <View style={styles.consignmentsList}>
-                {filteredConsignments.map((item) => {
-                  const isSelected = item.id === activeConsignment.id;
-                  const isSettled = item.status === "settled";
+              <Pressable
+                onPress={() => setActiveFilter("pending")}
+                style={[
+                  styles.mobileTab,
+                  activeFilter === "pending" && styles.mobileTabActive,
+                ]}
+              >
+                <Text
+                  variant="labelSm"
+                  style={[
+                    styles.mobileTabText,
+                    activeFilter === "pending" && styles.mobileTabTextActive,
+                  ]}
+                >
+                  Pending ({pendingCount})
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => setActiveFilter("credit")}
+                style={[
+                  styles.mobileTab,
+                  activeFilter === "credit" && styles.mobileTabActive,
+                ]}
+              >
+                <Text
+                  variant="labelSm"
+                  style={[
+                    styles.mobileTabText,
+                    activeFilter === "credit" && styles.mobileTabTextActive,
+                  ]}
+                >
+                  Credit ({creditCount})
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => setActiveFilter("advances")}
+                style={[
+                  styles.mobileTab,
+                  activeFilter === "advances" && styles.mobileTabActive,
+                ]}
+              >
+                <Text
+                  variant="labelSm"
+                  style={[
+                    styles.mobileTabText,
+                    activeFilter === "advances" && styles.mobileTabTextActive,
+                  ]}
+                >
+                  Advances ({advancesCount})
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
+
+        {/* Main Content Area */}
+        <View
+          style={
+            isDesktop ? styles.desktopMainGrid : styles.mobileMainContainer
+          }
+        >
+          {/* Left / Top: Consignments List */}
+          <View
+            style={isDesktop ? styles.desktopLeftCol : styles.mobileListSection}
+          >
+            <View style={styles.listHeaderRow}>
+              <Text
+                variant="labelSm"
+                color={COLORS.textSecondary}
+                style={styles.sectionHeaderTitle}
+              >
+                CUSTOMERS ({filteredConsignments.length})
+              </Text>
+            </View>
+
+            <View style={styles.consignmentsList}>
+              {filteredConsignments.length === 0 ? (
+                <View style={styles.emptyFilterWrap}>
+                  <Text variant="bodySm" color={COLORS.textMuted}>
+                    No consignments match current filter
+                  </Text>
+                </View>
+              ) : (
+                filteredConsignments.map((item) => {
+                  const isSelected = item.id === activeConsignment?.id;
 
                   return (
                     <Pressable
                       key={item.id}
                       onPress={() => setSelectedLoadId(item.id)}
-                      style={({ pressed }: any) => [
+                      style={({ pressed }: { pressed: boolean }) => [
                         styles.consignmentItem,
                         isSelected && styles.consignmentItemSelected,
                         isDesktop &&
@@ -562,13 +559,17 @@ export default function OfficeBillingWorkspace() {
 
                         <Badge
                           label={
-                            item.status === "calibrating"
-                              ? "Calibrating"
+                            item.status === "settling"
+                              ? "Settling"
                               : item.status === "settled"
                                 ? "Settled"
                                 : item.status === "pending"
                                   ? "Pending"
-                                  : "Uncalibrated"
+                                  : item.status === "calibrating"
+                                    ? "Calibrating"
+                                    : item.status === "uncalibrated"
+                                      ? "Uncalibrated"
+                                      : "Unsettled"
                           }
                           variant={item.status}
                         />
@@ -601,11 +602,13 @@ export default function OfficeBillingWorkspace() {
                       </View>
                     </Pressable>
                   );
-                })}
-              </View>
+                })
+              )}
             </View>
+          </View>
 
-            {/* Right / Bottom: Clean Calibration Detail Panel */}
+          {/* Right / Bottom: Clean Calibration Detail Panel */}
+          {filteredConsignments.length > 0 && activeConsignment ? (
             <View
               style={
                 isDesktop
@@ -642,21 +645,12 @@ export default function OfficeBillingWorkspace() {
                       Line Item Pricing & Settlement
                     </Text>
                   </View>
-
-                  {isDesktop && (
-                    <Pressable style={styles.closeBtn}>
-                      <MaterialIcons
-                        name="close"
-                        size={18}
-                        color={COLORS.textMuted}
-                      />
-                    </Pressable>
-                  )}
                 </View>
 
                 {/* Advance Application Strip */}
                 <AdvanceOffsetStrip
-                  availableAmount={activeConsignment.availableAdvance || 5000}
+                  key={`advance-${activeConsignment.id}`}
+                  availableAmount={activeConsignment.availableAdvance ?? 0}
                   appliedAmount={appliedAdvance}
                   voucherId={activeConsignment.advanceVoucherId || "ADV-1"}
                   onApplyAdvance={handleApplyAdvance}
@@ -762,7 +756,7 @@ export default function OfficeBillingWorkspace() {
                       </Text>
                       <Text
                         variant="tabularData"
-                        color={COLORS.statusPaidFill}
+                        color={COLORS.statusPaidText}
                         style={styles.summaryVal}
                       >
                         - {formatINR(appliedAdvance)}
@@ -781,7 +775,10 @@ export default function OfficeBillingWorkspace() {
                 </View>
 
                 {/* Payment Receipt Upload Dropzone */}
-                <FileUploadDropzone isMobile={isMobile} />
+                <FileUploadDropzone
+                  onFileSelect={handleUploadProof}
+                  isMobile={isMobile}
+                />
 
                 {/* Payment Mode Selection */}
                 <View style={styles.paymentModeSection}>
@@ -805,7 +802,16 @@ export default function OfficeBillingWorkspace() {
                     size="sm"
                     placeholder="settlement notes (optional)"
                     value={voidNotes}
-                    onChangeText={setVoidNotes}
+                    onChangeText={(txt) => {
+                      setVoidNotes(txt);
+                      setConsignments((prev) =>
+                        prev.map((c) =>
+                          c.id === activeConsignment.id
+                            ? { ...c, notes: txt }
+                            : c,
+                        ),
+                      );
+                    }}
                   />
                 </View>
 
@@ -822,7 +828,7 @@ export default function OfficeBillingWorkspace() {
                         variant="outline"
                         size="sm"
                         title="Print Pro-Forma"
-                        onPress={() => alert("Printing Pro-Forma Invoice...")}
+                        onPress={handlePrintProForma}
                       />
 
                       <Button
@@ -854,125 +860,44 @@ export default function OfficeBillingWorkspace() {
                 </View>
               </View>
             </View>
-          </View>
-        </ScrollView>
-      )}
-
-      {/* Mobile Sticky Bottom Navigation Bar */}
-      {!isDesktop && (
-        <View
-          style={[
-            styles.mobileBottomNav,
-            { paddingBottom: Math.max(insets.bottom, 8) },
-          ]}
-        >
-          <Pressable
-            onPress={() => setActiveMobileTab("billing")}
-            style={[
-              styles.mobileBottomNavItem,
-              activeMobileTab === "billing" && styles.mobileBottomNavItemActive,
-            ]}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: activeMobileTab === "billing" }}
-          >
-            <MaterialIcons
-              name="receipt-long"
-              size={22}
-              color={
-                activeMobileTab === "billing"
-                  ? COLORS.primary
-                  : COLORS.textMuted
+          ) : (
+            <View
+              style={
+                isDesktop
+                  ? styles.desktopRightCol
+                  : styles.mobileCalibrationSection
               }
-            />
-            <Text
-              variant="labelSm"
-              style={[
-                styles.mobileBottomNavLabel,
-                activeMobileTab === "billing" &&
-                  styles.mobileBottomNavLabelActive,
-              ]}
             >
-              Billing
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => setActiveMobileTab("credits")}
-            style={[
-              styles.mobileBottomNavItem,
-              activeMobileTab === "credits" && styles.mobileBottomNavItemActive,
-            ]}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: activeMobileTab === "credits" }}
-          >
-            <MaterialIcons
-              name="account-balance-wallet"
-              size={22}
-              color={
-                activeMobileTab === "credits"
-                  ? COLORS.primary
-                  : COLORS.textMuted
-              }
-            />
-            <Text
-              variant="labelSm"
-              style={[
-                styles.mobileBottomNavLabel,
-                activeMobileTab === "credits" &&
-                  styles.mobileBottomNavLabelActive,
-              ]}
-            >
-              Credit Ledger
-            </Text>
-          </Pressable>
+              <View style={[styles.detailCard, styles.emptyDetailWrap]}>
+                <MaterialIcons
+                  name="inventory-2"
+                  size={32}
+                  color={COLORS.textMuted}
+                />
+                <Text
+                  variant="bodyMd"
+                  color={COLORS.textSecondary}
+                  style={{ fontWeight: "600", marginTop: 8 }}
+                >
+                  No matching consignments
+                </Text>
+                <Text
+                  variant="bodySm"
+                  color={COLORS.textMuted}
+                  style={{ textAlign: "center", marginTop: 4, maxWidth: 280 }}
+                >
+                  No active orders match your search or filter criteria.
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
-      )}
-    </View>
+      </ScrollView>
+    </OfficeWorkspaceShell>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
-  mobileTopBar: {
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderSubtle,
-    paddingHorizontal: SPACING.spaceBase,
-    paddingBottom: SPACING.spaceSm + 2,
-    zIndex: 50,
-  },
-  mobileRoleRow: {
-    marginBottom: 8,
-  },
-  mobileTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  mobileCreditsLink: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: RADIUS.xs,
-  },
-  mobileLogoutBtn: {
-    padding: 6,
-    borderRadius: RADIUS.xs,
-    backgroundColor: COLORS.surfaceSecondary,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   scrollView: {
     flex: 1,
     backgroundColor: "#FFFFFF",
@@ -1072,24 +997,6 @@ const styles = StyleSheet.create({
   },
 
   // Mobile Layout
-  mobileHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: SPACING.spaceBase,
-    paddingTop: SPACING.spaceLg,
-    paddingBottom: SPACING.spaceSm,
-  },
-  mobileTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: COLORS.textPrimary,
-  },
-  mobileHeaderActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: SPACING.spaceSm,
-  },
   mobileMetricsSection: {
     paddingHorizontal: SPACING.spaceBase,
     paddingBottom: SPACING.spaceSm,
@@ -1146,6 +1053,16 @@ const styles = StyleSheet.create({
   consignmentsList: {
     gap: 4,
     marginTop: SPACING.spaceXs,
+  },
+  emptyFilterWrap: {
+    paddingVertical: SPACING.spaceXl,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyDetailWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 48,
   },
   consignmentItem: {
     paddingVertical: SPACING.spaceMd,
@@ -1238,9 +1155,6 @@ const styles = StyleSheet.create({
   },
   panelTitle: {
     marginTop: 4,
-  },
-  closeBtn: {
-    padding: 2,
   },
 
   // Line items
@@ -1382,47 +1296,5 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: { cursor: "pointer" },
     }),
-  },
-  mobileBottomNav: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    backgroundColor: COLORS.surface,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    paddingTop: 8,
-    zIndex: 100,
-    ...Platform.select({
-      web: {
-        position: "fixed",
-        boxShadow: "0 -2px 10px rgba(0, 0, 0, 0.05)",
-      },
-    }),
-  },
-  mobileBottomNavItem: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 4,
-    gap: 3,
-    ...Platform.select({
-      web: {
-        cursor: "pointer",
-      },
-    }),
-  },
-  mobileBottomNavItemActive: {},
-  mobileBottomNavLabel: {
-    fontSize: 11,
-    color: COLORS.textMuted,
-    fontWeight: "500",
-  },
-  mobileBottomNavLabelActive: {
-    color: COLORS.primary,
-    fontWeight: "700",
   },
 });

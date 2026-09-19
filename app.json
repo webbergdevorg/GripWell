@@ -32,6 +32,13 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you attach cargo verification and payment receipts.",
+          "cameraPermission": "The app accesses your camera to let you take cargo verification photos."
+        }
       ]
     ],
     "experiments": {

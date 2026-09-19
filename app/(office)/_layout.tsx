@@ -1,9 +1,3 @@
-/**
- * Gripwell - Office Route Group Layout
- * Protected Layout Guard: accessible by Office Admin and Owner.
- * Supervisor access is restricted and requires Office credentials.
- */
-
 import { Redirect, Stack } from "expo-router";
 import { useRoleContext } from "../../hooks/useRoleContext";
 import { hasWorkspaceAccess } from "../../services/auth/devCredentials";
@@ -22,6 +16,9 @@ export default function OfficeLayout() {
     if (authenticatedRole === "supervisor") {
       return <Redirect href="/(supervisor)/dispatch" />;
     }
+    if (authenticatedRole === "owner") {
+      return <Redirect href="/(owner)/dashboard" />;
+    }
     return <Redirect href="/login" />;
   }
 
@@ -29,6 +26,7 @@ export default function OfficeLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
+        animation: "none",
       }}
     />
   );

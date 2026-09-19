@@ -12,31 +12,30 @@ import { COLORS } from "../../constants/colors";
 import { SPACING } from "../../constants/spacing";
 import { useRoleContext } from "../../hooks/useRoleContext";
 import { Text } from "../ui/Text";
+import { RoleSwitcherPills } from "./RoleSwitcherPills";
 
 interface MobileSupervisorHeaderProps {
   dockName?: string;
 }
 
 export const MobileSupervisorHeader: React.FC<MobileSupervisorHeaderProps> = ({
-  dockName = "Dock Bay 3",
+  dockName = "",
 }) => {
   const insets = useSafeAreaInsets();
-  const { logout } = useRoleContext();
+  const { logout, isAdmin } = useRoleContext();
 
   return (
     <View
       style={[styles.headerContainer, { paddingTop: Math.max(insets.top, 12) }]}
     >
+      {isAdmin && (
+        <View style={styles.roleNavRow}>
+          <RoleSwitcherPills compact />
+        </View>
+      )}
       <View style={styles.headerContent}>
         {/* Left: Active Bay Indicator */}
         <View style={styles.leftSection}>
-          <View style={styles.activeDot} />
-          <Text variant="headlineSm" style={styles.dockTitle}>
-            {dockName}
-          </Text>
-          <Text variant="bodySm" color={COLORS.borderSubtle}>
-            /
-          </Text>
           <Text variant="bodySm" color={COLORS.textSecondary}>
             Supervisor
           </Text>
@@ -91,6 +90,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.spaceBase,
     paddingTop: 4,
     paddingBottom: 4,
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerContent: {
     height: 44,
@@ -103,12 +104,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-  },
-  activeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.statusPaidText, // Emerald 500 (#059669)
   },
   dockTitle: {
     fontSize: 15,

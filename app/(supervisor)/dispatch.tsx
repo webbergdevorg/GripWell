@@ -1,8 +1,6 @@
 /**
  * Gripwell - Supervisor Workspace: Outbound Dispatch & Gate Pass
- * Stitch References:
- * - Desktop: e9b548ccd0614c4189ec143905d33313
- * - Mobile: cc0a7d9be25f4b6fa0ea9a227bcb3f76
+ * Desktop & Mobile responsive dispatch terminal with 2-tab mobile navigation.
  */
 
 import { MaterialIcons } from "@expo/vector-icons";
@@ -51,7 +49,7 @@ const INITIAL_MANIFEST_ITEMS: LineItem[] = [
 ];
 
 export default function SupervisorDispatchWorkspace() {
-  const { isDesktop, isMobile } = useResponsive();
+  const { isDesktop } = useResponsive();
   const insets = useSafeAreaInsets();
 
   // Consignment / Dispatch Form State
@@ -78,6 +76,9 @@ export default function SupervisorDispatchWorkspace() {
   const [gatePassIssued, setGatePassIssued] = useState(false);
   const [gatePassCode, setGatePassCode] = useState("");
 
+  // Supervisor mobile bottom navigation tab
+  const [mobileTab, setMobileTab] = useState<"dispatch" | "recent">("dispatch");
+
   const handleAddItem = (item: LineItem) => {
     setManifestItems((prev) => [...prev, item]);
   };
@@ -101,12 +102,11 @@ export default function SupervisorDispatchWorkspace() {
   };
 
   // -------------------------------------------------------------
-  // DESKTOP VIEW (e9b548ccd0614c4189ec143905d33313)
+  // DESKTOP VIEW
   // -------------------------------------------------------------
   if (isDesktop) {
     return (
       <View style={styles.desktopContainer}>
-        {/* Sticky Desktop Header */}
         <DesktopHeader activeSection="dispatch" />
 
         <ScrollView
@@ -126,28 +126,21 @@ export default function SupervisorDispatchWorkspace() {
                 </Text>
                 <Text
                   variant="bodySm"
-                  color={COLORS.textSecondary}
+                  color={COLORS.textMuted}
                   style={styles.pageSubtitle}
                 >
-                  Stage outbound truck, verify manifest count, and issue driver
-                  gate pass.
+                  Outbound manifest & vehicle seal authorization
                 </Text>
               </View>
 
               <View style={styles.headerRightTags}>
-                <Text
-                  variant="tabularData"
-                  color={COLORS.textMuted}
-                  style={styles.loadCode}
-                >
-                  LOAD-004
-                </Text>
-                <Badge label="Staging" variant="staging" />
+                <Badge label="Bay 03 Active" variant="settled" />
+                <Badge label="Ready for Seal" variant="ready_for_seal" />
               </View>
             </View>
 
-            {/* Success Toast / Notification Banner */}
-            {gatePassIssued && (
+            {/* Success Toast */}
+            {gatePassIssued ? (
               <View style={styles.gatePassToast}>
                 <MaterialIcons
                   name="check-circle"
@@ -164,17 +157,28 @@ export default function SupervisorDispatchWorkspace() {
                   </Text>
                   <Text variant="bodySm" color={COLORS.textSecondary}>
                     Automated SMS with gate clearance link sent to {driverPhone}
-                    .
                   </Text>
                 </View>
+                <Pressable
+                  onPress={() => router.push("/(supervisor)/gate-pass" as any)}
+                  style={styles.viewPassLink}
+                >
+                  <Text
+                    variant="labelSm"
+                    color={COLORS.primary}
+                    style={{ fontWeight: "600" }}
+                  >
+                    View Digital Pass →
+                  </Text>
+                </Pressable>
               </View>
-            )}
+            ) : null}
 
-            {/* 12-Column Grid Layout */}
+            {/* 2-Column Responsive Layout */}
             <View style={styles.desktopGrid}>
-              {/* 8-Column Main Staging Form */}
+              {/* Left Column (8-col): Manifest & Consignment Form */}
               <View style={styles.desktopMainForm}>
-                {/* 1. Vehicle & Consignee */}
+                {/* 1. Consignee & Vehicle */}
                 <View style={styles.formSection}>
                   <View style={styles.formSectionHeader}>
                     <Text
@@ -184,13 +188,9 @@ export default function SupervisorDispatchWorkspace() {
                     >
                       1. VEHICLE & CONSIGNEE
                     </Text>
-                    <Text variant="labelSm" color={COLORS.textMuted}>
-                      Dispatch Details
-                    </Text>
                   </View>
 
                   <View style={styles.fieldsGrid}>
-                    {/* Customer Name */}
                     <View style={styles.fieldCol}>
                       <Text
                         variant="labelSm"
@@ -204,16 +204,8 @@ export default function SupervisorDispatchWorkspace() {
                         onChangeText={setCustomerName}
                         size="sm"
                       />
-                      <Text
-                        variant="bodySm"
-                        color={COLORS.textMuted}
-                        style={styles.fieldHelper}
-                      >
-                        Plot #14, Bypass Road, Ammapet, Salem
-                      </Text>
                     </View>
 
-                    {/* Customer Phone */}
                     <View style={styles.fieldCol}>
                       <Text
                         variant="labelSm"
@@ -229,16 +221,42 @@ export default function SupervisorDispatchWorkspace() {
                         mono
                         size="sm"
                       />
-                      <Text
-                        variant="bodySm"
-                        color={COLORS.textMuted}
-                        style={styles.fieldHelper}
-                      >
-                        Consignee primary contact
-                      </Text>
                     </View>
 
-                    {/* Driver Name */}
+                    <View style={styles.fieldCol}>
+                      <Text
+                        variant="labelSm"
+                        color={COLORS.textSecondary}
+                        style={styles.fieldLabel}
+                      >
+                        Vehicle Reg No.
+                      </Text>
+                      <TextInput
+                        value={vehicleReg}
+                        onChangeText={setVehicleReg}
+                        autoCapitalize="characters"
+                        mono
+                        size="sm"
+                      />
+                    </View>
+
+                    <View style={styles.fieldCol}>
+                      <Text
+                        variant="labelSm"
+                        color={COLORS.textSecondary}
+                        style={styles.fieldLabel}
+                      >
+                        Load Sequence ID
+                      </Text>
+                      <TextInput
+                        value={loadId}
+                        onChangeText={setLoadId}
+                        placeholder="202410240001"
+                        mono
+                        size="sm"
+                      />
+                    </View>
+
                     <View style={styles.fieldCol}>
                       <Text
                         variant="labelSm"
@@ -252,16 +270,8 @@ export default function SupervisorDispatchWorkspace() {
                         onChangeText={setDriverName}
                         size="sm"
                       />
-                      <Text
-                        variant="bodySm"
-                        color={COLORS.textMuted}
-                        style={styles.fieldHelper}
-                      >
-                        DL: TN-07-2018-884712
-                      </Text>
                     </View>
 
-                    {/* Driver Phone */}
                     <View style={styles.fieldCol}>
                       <Text
                         variant="labelSm"
@@ -277,66 +287,8 @@ export default function SupervisorDispatchWorkspace() {
                         mono
                         size="sm"
                       />
-                      <Text
-                        variant="bodySm"
-                        color={COLORS.textMuted}
-                        style={styles.fieldHelper}
-                      >
-                        Auto-sends digital gate pass SMS
-                      </Text>
                     </View>
 
-                    {/* Vehicle Reg */}
-                    <View style={styles.fieldCol}>
-                      <Text
-                        variant="labelSm"
-                        color={COLORS.textSecondary}
-                        style={styles.fieldLabel}
-                      >
-                        Vehicle Registration No.
-                      </Text>
-                      <TextInput
-                        value={vehicleReg}
-                        onChangeText={setVehicleReg}
-                        autoCapitalize="characters"
-                        mono
-                        size="sm"
-                      />
-                      <Text
-                        variant="bodySm"
-                        color={COLORS.textMuted}
-                        style={styles.fieldHelper}
-                      >
-                        VAHAN verified ✓
-                      </Text>
-                    </View>
-
-                    {/* Load ID */}
-                    <View style={styles.fieldCol}>
-                      <Text
-                        variant="labelSm"
-                        color={COLORS.textSecondary}
-                        style={styles.fieldLabel}
-                      >
-                        Load ID
-                      </Text>
-                      <TextInput
-                        value={loadId}
-                        onChangeText={setLoadId}
-                        placeholder="YYYYMMDDXXXX"
-                        mono
-                        size="sm"
-                      />
-                      <Text
-                        variant="bodySm"
-                        color={COLORS.textMuted}
-                        style={styles.fieldHelper}
-                      >
-                        Auto-generated Load Sequence (YYYYMMDDXXXX)
-                      </Text>
-                    </View>
-
-                    {/* Other Notes */}
                     <View style={styles.fieldColFull}>
                       <Text
                         variant="labelSm"
@@ -351,13 +303,6 @@ export default function SupervisorDispatchWorkspace() {
                         placeholder="Enter additional notes or remarks (optional)"
                         size="sm"
                       />
-                      <Text
-                        variant="bodySm"
-                        color={COLORS.textMuted}
-                        style={styles.fieldHelper}
-                      >
-                        Optional consignee or vehicle remarks
-                      </Text>
                     </View>
                   </View>
                 </View>
@@ -378,10 +323,7 @@ export default function SupervisorDispatchWorkspace() {
                       color={COLORS.textMuted}
                       style={styles.formSectionTitle}
                     >
-                      3. VERIFICATION & HANDOVER
-                    </Text>
-                    <Text variant="labelSm" color={COLORS.textMuted}>
-                      Compliance Check
+                      3. VERIFICATION
                     </Text>
                   </View>
 
@@ -414,441 +356,546 @@ export default function SupervisorDispatchWorkspace() {
   }
 
   // -------------------------------------------------------------
-  // MOBILE VIEW (cc0a7d9be25f4b6fa0ea9a227bcb3f76)
+  // MOBILE VIEW
   // -------------------------------------------------------------
   return (
     <View style={styles.mobileContainer}>
-      {/* Sticky Mobile Supervisor Header */}
       <MobileSupervisorHeader dockName="Dock Bay 3" />
 
-      <ScrollView
-        style={styles.mobileScroll}
-        contentContainerStyle={[
-          styles.mobileScrollContent,
-          {
-            paddingBottom: Math.max(
-              insets.bottom + SPACING.spaceBase,
-              SPACING.spaceXl,
-            ),
-          },
-        ]}
-      >
-        {/* Load Header Bar */}
-        <View style={styles.mobileHeaderBar}>
-          <Text
-            variant="headlineMd"
-            color={COLORS.textPrimary}
-            style={styles.mobileTitle}
-          >
-            New Dispatch
-          </Text>
-          <Badge label="Ready for Seal" variant="ready_for_seal" />
-        </View>
-
-        {/* Success Banner */}
-        {gatePassIssued && (
-          <Pressable
-            onPress={() => router.push("/(supervisor)/gate-pass" as any)}
-            style={({ pressed }: any) => [
-              styles.mobileSuccessBanner,
-              pressed && styles.pressed,
-            ]}
-          >
-            <MaterialIcons
-              name="check-circle"
-              size={20}
-              color={COLORS.statusPaidText}
-            />
-            <View style={{ flex: 1 }}>
-              <Text
-                variant="bodyMd"
-                color={COLORS.textPrimary}
-                style={{ fontWeight: "600" }}
-              >
-                Gate Pass #{gatePassCode} Issued
-              </Text>
-              <Text variant="bodySm" color={COLORS.textSecondary}>
-                Tap to view digital pass & seal proof →
-              </Text>
-            </View>
-            <MaterialIcons
-              name="chevron-right"
-              size={20}
-              color={COLORS.textMuted}
-            />
-          </Pressable>
-        )}
-
-        {/* 1. Vehicle & Consignee */}
-        <View style={styles.formSection}>
-          <View style={styles.formSectionHeader}>
+      {mobileTab === "dispatch" ? (
+        <ScrollView
+          style={styles.mobileScroll}
+          contentContainerStyle={[
+            styles.mobileScrollContent,
+            {
+              paddingBottom: 72 + insets.bottom,
+            },
+          ]}
+        >
+          {/* Load Header Bar */}
+          <View style={styles.mobileHeaderBar}>
             <Text
-              variant="labelSm"
-              color={COLORS.textMuted}
-              style={styles.formSectionTitle}
+              variant="headlineMd"
+              color={COLORS.textPrimary}
+              style={styles.mobileTitle}
             >
-              1. VEHICLE & CONSIGNEE
+              New Dispatch
             </Text>
-            <Text variant="labelSm" color={COLORS.textMuted}>
-              Dispatch Details
-            </Text>
+            <Badge label="Ready for Seal" variant="ready_for_seal" />
           </View>
 
-          <View style={styles.mobileFormCard}>
-            <View style={styles.mobileFieldsGrid}>
-              {/* Customer Name */}
-              <View style={styles.mobileFieldCol}>
-                <View style={styles.fieldLabelRow}>
-                  <MaterialIcons
-                    name="storefront"
-                    size={13}
-                    color={COLORS.textMuted}
-                  />
-                  <Text
-                    variant="labelSm"
-                    color={COLORS.textSecondary}
-                    style={styles.fieldLabel}
-                  >
-                    Customer Name
-                  </Text>
-                </View>
-                <TextInput
-                  value={customerName}
-                  onChangeText={setCustomerName}
-                  placeholder="Customer Name"
-                  size="sm"
-                />
+          {/* Success Banner */}
+          {gatePassIssued ? (
+            <Pressable
+              onPress={() => router.push("/(supervisor)/gate-pass" as any)}
+              style={({ pressed }) => [
+                styles.mobileSuccessBanner,
+                pressed && styles.pressed,
+              ]}
+            >
+              <MaterialIcons
+                name="check-circle"
+                size={20}
+                color={COLORS.statusPaidText}
+              />
+              <View style={{ flex: 1 }}>
                 <Text
-                  variant="bodySm"
-                  color={COLORS.textMuted}
-                  style={styles.fieldHelper}
-                  numberOfLines={1}
+                  variant="bodyMd"
+                  color={COLORS.textPrimary}
+                  style={{ fontWeight: "600" }}
                 >
-                  Plot #14, Bypass Road, Salem
+                  Gate Pass #{gatePassCode} Issued
+                </Text>
+                <Text variant="bodySm" color={COLORS.textSecondary}>
+                  Tap to view digital pass & seal proof →
                 </Text>
               </View>
+              <MaterialIcons
+                name="chevron-right"
+                size={20}
+                color={COLORS.textMuted}
+              />
+            </Pressable>
+          ) : null}
 
-              {/* Customer Phone */}
-              <View style={styles.mobileFieldCol}>
-                <View style={styles.fieldLabelRow}>
-                  <MaterialIcons
-                    name="call"
-                    size={13}
-                    color={COLORS.textMuted}
+          {/* 1. Vehicle & Consignee */}
+          <View style={styles.formSection}>
+            <View style={styles.formSectionHeader}>
+              <Text
+                variant="labelSm"
+                color={COLORS.textMuted}
+                style={styles.formSectionTitle}
+              >
+                1. VEHICLE & CONSIGNEE
+              </Text>
+              <Text variant="labelSm" color={COLORS.textMuted}>
+                Dispatch Details
+              </Text>
+            </View>
+
+            <View style={styles.mobileFormCard}>
+              <View style={styles.mobileFieldsGrid}>
+                {/* Customer Name */}
+                <View style={styles.mobileFieldCol}>
+                  <View style={styles.fieldLabelRow}>
+                    <MaterialIcons
+                      name="storefront"
+                      size={13}
+                      color={COLORS.textMuted}
+                    />
+                    <Text
+                      variant="labelSm"
+                      color={COLORS.textSecondary}
+                      style={styles.fieldLabel}
+                    >
+                      Customer Name
+                    </Text>
+                  </View>
+                  <TextInput
+                    value={customerName}
+                    onChangeText={setCustomerName}
+                    placeholder="Customer Name"
+                    size="sm"
                   />
                   <Text
-                    variant="labelSm"
-                    color={COLORS.textSecondary}
-                    style={styles.fieldLabel}
+                    variant="bodySm"
+                    color={COLORS.textMuted}
+                    style={styles.fieldHelper}
+                    numberOfLines={1}
                   >
-                    Customer Phone
+                    Plot #14, Bypass Road, Salem
                   </Text>
                 </View>
-                <TextInput
-                  value={customerPhone}
-                  onChangeText={setCustomerPhone}
-                  placeholder="+91 94432 18742"
-                  keyboardType="phone-pad"
-                  mono
-                  size="sm"
-                />
-                <Text
-                  variant="bodySm"
-                  color={COLORS.textMuted}
-                  style={styles.fieldHelper}
-                  numberOfLines={1}
-                >
-                  Consignee contact
-                </Text>
-              </View>
 
-              {/* Driver Name */}
-              <View style={styles.mobileFieldCol}>
-                <View style={styles.fieldLabelRow}>
-                  <MaterialIcons
-                    name="person"
-                    size={13}
-                    color={COLORS.textMuted}
+                {/* Customer Phone */}
+                <View style={styles.mobileFieldCol}>
+                  <View style={styles.fieldLabelRow}>
+                    <MaterialIcons
+                      name="call"
+                      size={13}
+                      color={COLORS.textMuted}
+                    />
+                    <Text
+                      variant="labelSm"
+                      color={COLORS.textSecondary}
+                      style={styles.fieldLabel}
+                    >
+                      Customer Phone
+                    </Text>
+                  </View>
+                  <TextInput
+                    value={customerPhone}
+                    onChangeText={setCustomerPhone}
+                    placeholder="+91 94432 18742"
+                    keyboardType="phone-pad"
+                    mono
+                    size="sm"
                   />
                   <Text
-                    variant="labelSm"
-                    color={COLORS.textSecondary}
-                    style={styles.fieldLabel}
+                    variant="bodySm"
+                    color={COLORS.textMuted}
+                    style={styles.fieldHelper}
+                    numberOfLines={1}
                   >
-                    Driver Name
+                    Consignee contact
                   </Text>
                 </View>
-                <TextInput
-                  value={driverName}
-                  onChangeText={setDriverName}
-                  placeholder="Driver Name"
-                  size="sm"
-                />
-                <Text
-                  variant="bodySm"
-                  color={COLORS.textMuted}
-                  style={styles.fieldHelper}
-                  numberOfLines={1}
-                >
-                  DL: TN-07-2018-884712
-                </Text>
-              </View>
 
-              {/* Driver Phone */}
-              <View style={styles.mobileFieldCol}>
-                <View style={styles.fieldLabelRow}>
-                  <MaterialIcons
-                    name="phone-android"
-                    size={13}
-                    color={COLORS.textMuted}
+                {/* Driver Name */}
+                <View style={styles.mobileFieldCol}>
+                  <View style={styles.fieldLabelRow}>
+                    <MaterialIcons
+                      name="person"
+                      size={13}
+                      color={COLORS.textMuted}
+                    />
+                    <Text
+                      variant="labelSm"
+                      color={COLORS.textSecondary}
+                      style={styles.fieldLabel}
+                    >
+                      Driver Name
+                    </Text>
+                  </View>
+                  <TextInput
+                    value={driverName}
+                    onChangeText={setDriverName}
+                    placeholder="Driver Name"
+                    size="sm"
+                  />
+                </View>
+
+                {/* Driver Phone */}
+                <View style={styles.mobileFieldCol}>
+                  <View style={styles.fieldLabelRow}>
+                    <MaterialIcons
+                      name="phone-android"
+                      size={13}
+                      color={COLORS.textMuted}
+                    />
+                    <Text
+                      variant="labelSm"
+                      color={COLORS.textSecondary}
+                      style={styles.fieldLabel}
+                    >
+                      Driver Phone
+                    </Text>
+                  </View>
+                  <TextInput
+                    value={driverPhone}
+                    onChangeText={setDriverPhone}
+                    placeholder="+91 98421 90812"
+                    keyboardType="phone-pad"
+                    mono
+                    size="sm"
                   />
                   <Text
-                    variant="labelSm"
-                    color={COLORS.textSecondary}
-                    style={styles.fieldLabel}
+                    variant="bodySm"
+                    color={COLORS.textMuted}
+                    style={styles.fieldHelper}
+                    numberOfLines={1}
                   >
-                    Driver Phone
+                    Gate pass SMS
                   </Text>
                 </View>
-                <TextInput
-                  value={driverPhone}
-                  onChangeText={setDriverPhone}
-                  placeholder="+91 98421 90812"
-                  keyboardType="phone-pad"
-                  mono
-                  size="sm"
-                />
-                <Text
-                  variant="bodySm"
-                  color={COLORS.textMuted}
-                  style={styles.fieldHelper}
-                  numberOfLines={1}
-                >
-                  Gate pass SMS
-                </Text>
-              </View>
 
-              {/* Vehicle Registration */}
-              <View style={styles.mobileFieldCol}>
-                <View style={styles.fieldLabelRow}>
-                  <MaterialIcons
-                    name="local-shipping"
-                    size={13}
-                    color={COLORS.textMuted}
+                {/* Vehicle Registration */}
+                <View style={styles.mobileFieldCol}>
+                  <View style={styles.fieldLabelRow}>
+                    <MaterialIcons
+                      name="local-shipping"
+                      size={13}
+                      color={COLORS.textMuted}
+                    />
+                    <Text
+                      variant="labelSm"
+                      color={COLORS.textSecondary}
+                      style={styles.fieldLabel}
+                    >
+                      Vehicle Reg No.
+                    </Text>
+                  </View>
+                  <TextInput
+                    value={vehicleReg}
+                    onChangeText={setVehicleReg}
+                    placeholder="TN 01 AB 1234"
+                    autoCapitalize="characters"
+                    mono
+                    size="sm"
+                  />
+                </View>
+
+                {/* Load ID */}
+                <View style={styles.mobileFieldCol}>
+                  <View style={styles.fieldLabelRow}>
+                    <MaterialIcons
+                      name="tag"
+                      size={13}
+                      color={COLORS.textMuted}
+                    />
+                    <Text
+                      variant="labelSm"
+                      color={COLORS.textSecondary}
+                      style={styles.fieldLabel}
+                    >
+                      Load ID
+                    </Text>
+                  </View>
+                  <TextInput
+                    value={loadId}
+                    onChangeText={setLoadId}
+                    placeholder="YYYYMMDDXXXX"
+                    mono
+                    size="sm"
                   />
                   <Text
-                    variant="labelSm"
-                    color={COLORS.textSecondary}
-                    style={styles.fieldLabel}
-                  >
-                    Vehicle Reg No.
-                  </Text>
-                </View>
-                <TextInput
-                  value={vehicleReg}
-                  onChangeText={setVehicleReg}
-                  placeholder="TN 01 AB 1234"
-                  autoCapitalize="characters"
-                  mono
-                  size="sm"
-                />
-                <Text
-                  variant="bodySm"
-                  color={COLORS.statusPaidText}
-                  style={styles.fieldHelper}
-                  numberOfLines={1}
-                >
-                  VAHAN verified ✓
-                </Text>
-              </View>
-
-              {/* Load ID */}
-              <View style={styles.mobileFieldCol}>
-                <View style={styles.fieldLabelRow}>
-                  <MaterialIcons
-                    name="tag"
-                    size={13}
+                    variant="bodySm"
                     color={COLORS.textMuted}
-                  />
-                  <Text
-                    variant="labelSm"
-                    color={COLORS.textSecondary}
-                    style={styles.fieldLabel}
+                    style={styles.fieldHelper}
+                    numberOfLines={1}
                   >
-                    Load ID
+                    Sequence format
                   </Text>
                 </View>
-                <TextInput
-                  value={loadId}
-                  onChangeText={setLoadId}
-                  placeholder="YYYYMMDDXXXX"
-                  mono
-                  size="sm"
-                />
-                <Text
-                  variant="bodySm"
-                  color={COLORS.textMuted}
-                  style={styles.fieldHelper}
-                  numberOfLines={1}
-                >
-                  Sequence format
-                </Text>
-              </View>
 
-              {/* Other Notes */}
-              <View style={styles.fieldColFull}>
-                <View style={styles.fieldLabelRow}>
-                  <MaterialIcons
-                    name="notes"
-                    size={13}
-                    color={COLORS.textMuted}
+                {/* Other Notes */}
+                <View style={styles.fieldColFull}>
+                  <View style={styles.fieldLabelRow}>
+                    <MaterialIcons
+                      name="notes"
+                      size={13}
+                      color={COLORS.textMuted}
+                    />
+                    <Text
+                      variant="labelSm"
+                      color={COLORS.textSecondary}
+                      style={styles.fieldLabel}
+                    >
+                      Other Notes
+                    </Text>
+                  </View>
+                  <TextInput
+                    value={notes}
+                    onChangeText={setNotes}
+                    placeholder="Enter additional notes or remarks (optional)"
+                    size="sm"
                   />
-                  <Text
-                    variant="labelSm"
-                    color={COLORS.textSecondary}
-                    style={styles.fieldLabel}
-                  >
-                    Other Notes
-                  </Text>
                 </View>
-                <TextInput
-                  value={notes}
-                  onChangeText={setNotes}
-                  placeholder="Enter additional notes or remarks (optional)"
-                  size="sm"
-                />
-                <Text
-                  variant="bodySm"
-                  color={COLORS.textMuted}
-                  style={styles.fieldHelper}
-                  numberOfLines={1}
-                >
-                  Optional consignee or vehicle remarks
-                </Text>
               </View>
             </View>
           </View>
-        </View>
 
-        {/* Loaded Manifest */}
-        <ManifestTable
-          items={manifestItems}
-          onAddItem={handleAddItem}
-          onRemoveItem={handleRemoveItem}
-          isDesktop={false}
-        />
-
-        {/* Verification & Proof */}
-        <View style={styles.mobileVerificationSection}>
-          <Text
-            variant="labelSm"
-            color={COLORS.textMuted}
-            style={styles.sectionHeaderTitle}
-          >
-            VERIFICATION & PROOF
-          </Text>
-          <CargoPhotoCard isDesktop={false} />
-
-          {/* Primary Action Button */}
-          <Button
-            label={
-              gatePassIssued
-                ? "Gate Pass Issued (#GP-04) ✓"
-                : isSubmitting
-                  ? "Generating Gate Pass..."
-                  : "Submit Dispatch & Gate Pass"
-            }
-            icon={gatePassIssued ? "check" : "assignment-turned-in"}
-            variant="primary"
-            onPress={handleSubmitDispatch}
-            disabled={isSubmitting || gatePassIssued}
-            style={
-              gatePassIssued
-                ? styles.mobileButtonSuccess
-                : styles.mobileButtonAction
-            }
+          {/* Loaded Manifest */}
+          <ManifestTable
+            items={manifestItems}
+            onAddItem={handleAddItem}
+            onRemoveItem={handleRemoveItem}
+            isDesktop={false}
           />
-        </View>
 
-        {/* Recent Loads (Today) */}
-        <View style={styles.mobileRecentSection}>
-          <View style={styles.mobileRecentHeader}>
+          {/* Verification & Proof */}
+          <View style={styles.mobileVerificationSection}>
             <Text
               variant="labelSm"
               color={COLORS.textMuted}
               style={styles.sectionHeaderTitle}
             >
-              RECENT LOADS (TODAY)
+              VERIFICATION & PROOF
             </Text>
-            <Text variant="labelSm" color={COLORS.textMuted}>
-              3 completed
-            </Text>
+            <CargoPhotoCard isDesktop={false} />
+
+            {/* Primary Action Button */}
+            <Button
+              label={
+                gatePassIssued
+                  ? "Gate Pass Issued (#GP-04) ✓"
+                  : isSubmitting
+                    ? "Generating Gate Pass..."
+                    : "Submit Dispatch & Gate Pass"
+              }
+              icon={gatePassIssued ? "check" : "assignment-turned-in"}
+              variant="primary"
+              onPress={handleSubmitDispatch}
+              disabled={isSubmitting || gatePassIssued}
+              style={
+                gatePassIssued
+                  ? styles.mobileButtonSuccess
+                  : styles.mobileButtonAction
+              }
+            />
+          </View>
+        </ScrollView>
+      ) : (
+        /* RECENT TAB */
+        <ScrollView
+          style={styles.mobileScroll}
+          contentContainerStyle={[
+            styles.mobileScrollContent,
+            {
+              paddingBottom: 72 + insets.bottom,
+            },
+          ]}
+        >
+          <View style={styles.mobileHeaderBar}>
+            <View>
+              <Text
+                variant="headlineMd"
+                color={COLORS.textPrimary}
+                style={styles.mobileTitle}
+              >
+                Recent Dispatches
+              </Text>
+            </View>
+            <Badge
+              label={`${recentLoads.length} Dispatched`}
+              variant="default"
+            />
           </View>
 
-          <View style={styles.mobileRecentCard}>
-            {recentLoads.map((load, idx) => (
-              <View
-                key={load.id}
-                style={[
-                  styles.mobileRecentRow,
-                  idx < recentLoads.length - 1 && styles.rowBorderBottom,
-                ]}
-              >
-                <View style={styles.mobileRecentInfo}>
-                  <Text
-                    variant="tabularData"
-                    color={COLORS.textMuted}
-                    style={styles.recentSeq}
-                  >
-                    #{3 - idx}
-                  </Text>
-                  <View style={{ flex: 1, minWidth: 0 }}>
+          <View style={styles.recentListContainer}>
+            {recentLoads.map((load) => (
+              <View key={load.id} style={styles.recentCard}>
+                <View style={styles.recentCardHeader}>
+                  <View style={styles.recentCardHeaderLeft}>
                     <Text
-                      variant="bodyMd"
-                      color={COLORS.textPrimary}
-                      style={styles.recentCust}
-                      numberOfLines={1}
+                      variant="tabularData"
+                      color={COLORS.primary}
+                      style={styles.recentLoadId}
                     >
-                      {load.customerName}
+                      {load.id}
                     </Text>
-                    <Text
-                      variant="bodySm"
-                      color={COLORS.textMuted}
-                      style={styles.recentMeta}
-                    >
-                      {load.dispatchTime.replace("Today ", "")} •{" "}
-                      {load.vehicleNumber}
+                    <Text variant="bodySm" color={COLORS.textMuted}>
+                      •
+                    </Text>
+                    <Text variant="bodySm" color={COLORS.textSecondary}>
+                      {load.dispatchTime}
                     </Text>
                   </View>
+                  <Badge
+                    label={
+                      load.status === "settled"
+                        ? "Paid"
+                        : load.status === "credit"
+                          ? "Credit"
+                          : "Pending"
+                    }
+                    variant={
+                      load.status === "settled"
+                        ? "paid"
+                        : load.status === "credit"
+                          ? "credit"
+                          : "pending"
+                    }
+                  />
                 </View>
 
-                <Badge
-                  label={
-                    load.status === "settled"
-                      ? "Paid"
-                      : load.status === "credit"
-                        ? "Credit"
-                        : "Pending"
-                  }
-                  variant={
-                    load.status === "settled"
-                      ? "paid"
-                      : load.status === "credit"
-                        ? "credit"
-                        : "pending"
-                  }
-                />
+                <View style={styles.recentCardBody}>
+                  <Text
+                    variant="bodyMd"
+                    color={COLORS.textPrimary}
+                    style={styles.recentCustomerName}
+                  >
+                    {load.customerName}
+                  </Text>
+                  <View style={styles.recentMetaRow}>
+                    <MaterialIcons
+                      name="local-shipping"
+                      size={13}
+                      color={COLORS.textMuted}
+                    />
+                    <Text
+                      variant="tabularData"
+                      color={COLORS.textSecondary}
+                      style={styles.recentMetaText}
+                    >
+                      {load.vehicleNumber}
+                    </Text>
+                    <Text variant="bodySm" color={COLORS.borderSubtle}>
+                      •
+                    </Text>
+                    <MaterialIcons
+                      name="person"
+                      size={13}
+                      color={COLORS.textMuted}
+                    />
+                    <Text variant="bodySm" color={COLORS.textSecondary}>
+                      {load.driverName}
+                    </Text>
+                  </View>
+
+                  <Text
+                    variant="bodySm"
+                    color={COLORS.textMuted}
+                    style={styles.recentItemsSummary}
+                    numberOfLines={2}
+                  >
+                    {load.itemsSummary}
+                  </Text>
+                </View>
+
+                <View style={styles.recentCardFooter}>
+                  <Pressable
+                    onPress={() =>
+                      router.push("/(supervisor)/gate-pass" as any)
+                    }
+                    style={({ pressed }) => [
+                      styles.viewGatePassBtn,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <View style={styles.viewGatePassBtnLeft}>
+                      <MaterialIcons
+                        name="description"
+                        size={14}
+                        color={COLORS.primary}
+                      />
+                      <Text
+                        variant="labelSm"
+                        color={COLORS.primary}
+                        style={styles.viewGatePassText}
+                      >
+                        View Digital Gate Pass
+                      </Text>
+                    </View>
+                    <MaterialIcons
+                      name="chevron-right"
+                      size={16}
+                      color={COLORS.primary}
+                    />
+                  </Pressable>
+                </View>
               </View>
             ))}
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      )}
+
+      {/* Fixed Supervisor Bottom Navigation */}
+      <View
+        style={[
+          styles.supervisorBottomNav,
+          { paddingBottom: Math.max(insets.bottom, 6) },
+        ]}
+      >
+        <Pressable
+          onPress={() => setMobileTab("dispatch")}
+          style={[
+            styles.supervisorNavTab,
+            mobileTab === "dispatch" && styles.supervisorNavTabActive,
+          ]}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: mobileTab === "dispatch" }}
+        >
+          <MaterialIcons
+            name="local-shipping"
+            size={22}
+            color={mobileTab === "dispatch" ? COLORS.primary : COLORS.textMuted}
+          />
+          <Text
+            variant="labelSm"
+            color={mobileTab === "dispatch" ? COLORS.primary : COLORS.textMuted}
+            style={
+              mobileTab === "dispatch"
+                ? styles.supervisorNavTextActive
+                : styles.supervisorNavText
+            }
+          >
+            Dispatch
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => setMobileTab("recent")}
+          style={[
+            styles.supervisorNavTab,
+            mobileTab === "recent" && styles.supervisorNavTabActive,
+          ]}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: mobileTab === "recent" }}
+        >
+          <MaterialIcons
+            name="history"
+            size={22}
+            color={mobileTab === "recent" ? COLORS.primary : COLORS.textMuted}
+          />
+          <Text
+            variant="labelSm"
+            color={mobileTab === "recent" ? COLORS.primary : COLORS.textMuted}
+            style={
+              mobileTab === "recent"
+                ? styles.supervisorNavTextActive
+                : styles.supervisorNavText
+            }
+          >
+            Recent
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // Desktop
   desktopContainer: {
     flex: 1,
     backgroundColor: COLORS.surface,
@@ -886,39 +933,44 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: SPACING.spaceSm,
   },
-  loadCode: {
-    fontSize: 12,
-  },
   gatePassToast: {
     flexDirection: "row",
     alignItems: "center",
-    gap: SPACING.spaceSm + 2,
+    gap: SPACING.spaceMd,
     backgroundColor: "#F0FDF4",
     borderWidth: 1,
     borderColor: "#BBF7D0",
     borderRadius: RADIUS.sm,
-    padding: SPACING.spaceMd,
-    marginBottom: SPACING.spaceLg,
+    paddingHorizontal: SPACING.spaceMd,
+    paddingVertical: SPACING.spaceSm + 2,
+    marginBottom: SPACING.spaceXl,
   },
   gatePassToastContent: {
     flex: 1,
+    gap: 2,
+  },
+  viewPassLink: {
+    paddingHorizontal: SPACING.spaceSm,
+    paddingVertical: 4,
   },
   desktopGrid: {
     flexDirection: "row",
-    gap: SPACING.space2xl,
+    gap: SPACING.spaceXl,
     alignItems: "flex-start",
   },
   desktopMainForm: {
     flex: 8,
-    gap: SPACING.space2xl,
+    gap: SPACING.spaceXl,
   },
   desktopSideMonitor: {
     flex: 4,
-    borderLeftWidth: 1,
-    borderLeftColor: COLORS.border,
-    paddingLeft: SPACING.spaceXl,
   },
   formSection: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: SPACING.spaceLg,
     gap: SPACING.spaceMd,
   },
   formSectionHeader: {
@@ -951,9 +1003,6 @@ const styles = StyleSheet.create({
   },
   fieldHelper: {
     fontSize: 11,
-  },
-  readOnlyInput: {
-    backgroundColor: COLORS.surfaceSecondary,
   },
   verificationGrid: {
     flexDirection: "row",
@@ -1018,79 +1067,6 @@ const styles = StyleSheet.create({
     gap: 4,
     marginBottom: 2,
   },
-  mobileDetailsCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.sm,
-    borderWidth: 1,
-    borderColor: COLORS.borderSubtle,
-    overflow: "hidden",
-  },
-  mobileDetailRow: {
-    flexDirection: "row",
-  },
-  mobileDetailCell: {
-    flex: 1,
-    padding: SPACING.spaceSm + 2,
-    gap: 2,
-  },
-  cellBorderRight: {
-    borderRightWidth: 1,
-    borderRightColor: COLORS.borderSubtle,
-  },
-  rowBorderTop: {
-    borderTopWidth: 1,
-    borderTopColor: COLORS.borderSubtle,
-  },
-  rowBorderBottom: {
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderSubtle,
-  },
-  cellLabel: {
-    fontSize: 10,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  cellValue: {
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  cellValueBold: {
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  cellSub: {
-    fontSize: 11,
-    marginTop: 1,
-  },
-  iconTextRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  cellSubRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingTop: 4,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.borderSubtle,
-    marginTop: 2,
-  },
-  cellSubText: {
-    fontSize: 11,
-    fontWeight: "500",
-  },
-  mobileNotesCell: {
-    padding: SPACING.spaceSm + 2,
-    gap: 2,
-  },
-  borderlessInput: {
-    flex: 1,
-    borderWidth: 0,
-    backgroundColor: "transparent",
-    paddingHorizontal: 0,
-    height: 28,
-  },
   mobileVerificationSection: {
     gap: SPACING.spaceSm,
   },
@@ -1105,47 +1081,102 @@ const styles = StyleSheet.create({
   mobileButtonSuccess: {
     height: 42,
     marginTop: 4,
-    backgroundColor: COLORS.statusPaidText, // Emerald
+    backgroundColor: COLORS.statusPaidText,
   },
-  mobileRecentSection: {
-    gap: SPACING.spaceSm,
+  recentListContainer: {
+    gap: SPACING.spaceSm + 2,
   },
-  mobileRecentHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  mobileRecentCard: {
+  recentCard: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.sm,
     borderWidth: 1,
     borderColor: COLORS.borderSubtle,
     overflow: "hidden",
   },
-  mobileRecentRow: {
+  recentCardHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: SPACING.spaceBase,
-    paddingVertical: SPACING.spaceSm + 2,
+    paddingVertical: SPACING.spaceSm,
+    backgroundColor: COLORS.surfaceSecondary,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderSubtle,
   },
-  mobileRecentInfo: {
+  recentCardHeaderLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: SPACING.spaceSm + 2,
-    flex: 1,
-    minWidth: 0,
-    paddingRight: SPACING.spaceSm,
+    gap: 6,
   },
-  recentSeq: {
-    fontSize: 11,
-  },
-  recentCust: {
-    fontWeight: "500",
+  recentLoadId: {
     fontSize: 13,
+    fontWeight: "600",
   },
-  recentMeta: {
+  recentCardBody: {
+    padding: SPACING.spaceBase,
+    gap: 6,
+  },
+  recentCustomerName: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  recentMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  recentMetaText: {
+    fontSize: 12,
+  },
+  recentItemsSummary: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  recentCardFooter: {
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderSubtle,
+    paddingHorizontal: SPACING.spaceBase,
+    paddingVertical: SPACING.spaceSm,
+  },
+  viewGatePassBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  viewGatePassBtnLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  viewGatePassText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  supervisorBottomNav: {
+    flexDirection: "row",
+    backgroundColor: COLORS.surface,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderSubtle,
+    minHeight: 52,
+  },
+  supervisorNavTab: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+    paddingVertical: 8,
+  },
+  supervisorNavTabActive: {
+    borderTopWidth: 2,
+    borderTopColor: COLORS.primary,
+  },
+  supervisorNavText: {
     fontSize: 11,
+    fontWeight: "500",
+  },
+  supervisorNavTextActive: {
+    fontSize: 11,
+    fontWeight: "600",
   },
   pressed: {
     opacity: 0.8,

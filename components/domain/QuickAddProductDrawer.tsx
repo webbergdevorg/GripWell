@@ -7,12 +7,12 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
-    Modal,
-    Platform,
-    Pressable,
-    TextInput as RNTextInput,
-    StyleSheet,
-    View,
+  Modal,
+  Platform,
+  Pressable,
+  TextInput as RNTextInput,
+  StyleSheet,
+  View,
 } from "react-native";
 import { COLORS } from "../../constants/colors";
 import { RADIUS, SPACING } from "../../constants/spacing";
@@ -51,6 +51,8 @@ export const QuickAddProductDrawer: React.FC<QuickAddProductDrawerProps> = ({
   const [category, setCategory] = useState("Industrial Crates");
   const [unitMetric, setUnitMetric] = useState("pcs");
   const [rate, setRate] = useState("");
+  const [defaultPlusRate, setDefaultPlusRate] = useState("");
+  const [minThresholdRate, setMinThresholdRate] = useState("");
   const [hsnCode, setHsnCode] = useState("");
 
   const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
@@ -66,9 +68,16 @@ export const QuickAddProductDrawer: React.FC<QuickAddProductDrawerProps> = ({
     }
     const numRate = parseFloat(rate);
     if (isNaN(numRate) || numRate <= 0) {
-      setErrorMessage("Please enter a valid base rate.");
+      setErrorMessage("Please enter a valid default rate.");
       return;
     }
+
+    const numPlus = parseFloat(defaultPlusRate);
+    const numMin = parseFloat(minThresholdRate);
+    const finalPlus =
+      !isNaN(numPlus) && numPlus > 0 ? numPlus : Math.round(numRate * 1.12);
+    const finalMin =
+      !isNaN(numMin) && numMin > 0 ? numMin : Math.round(numRate * 0.9);
 
     const randomSkuNum = Math.floor(100 + Math.random() * 900);
     const skuCode = `#PRD-${randomSkuNum}`;
@@ -89,10 +98,9 @@ export const QuickAddProductDrawer: React.FC<QuickAddProductDrawerProps> = ({
       status: "ACTIVE",
       unitMetric: unitMetric,
       defaultBaseRate: numRate,
+      defaultPlusRate: finalPlus,
+      minThresholdRate: finalMin,
       rateDisplay: `₹${numRate.toFixed(2)} / ${unitMetric === "pcs" ? "pc" : unitMetric}`,
-      warehouseStock: 100,
-      warehouseStockDisplay: `100 ${unitMetric}`,
-      stockSubtext: "(Initial batch)",
       hsnCode: hsnCode.trim() || "3923.10",
     };
 
@@ -100,6 +108,8 @@ export const QuickAddProductDrawer: React.FC<QuickAddProductDrawerProps> = ({
     // Reset form
     setTitle("");
     setRate("");
+    setDefaultPlusRate("");
+    setMinThresholdRate("");
     setHsnCode("");
     setErrorMessage(null);
     onClose();
@@ -108,6 +118,8 @@ export const QuickAddProductDrawer: React.FC<QuickAddProductDrawerProps> = ({
   const handleDiscard = () => {
     setTitle("");
     setRate("");
+    setDefaultPlusRate("");
+    setMinThresholdRate("");
     setHsnCode("");
     setErrorMessage(null);
     onClose();
@@ -264,8 +276,48 @@ export const QuickAddProductDrawer: React.FC<QuickAddProductDrawerProps> = ({
             onChangeText={(r) => {
               setRate(r);
               if (errorMessage) setErrorMessage(null);
+              const n = parseFloat(r);
+              if (!isNaN(n) && n > 0) {
+                if (!defaultPlusRate) setDefaultPlusRate((n * 1.12).toFixed(2));
+                if (!minThresholdRate)
+                  setMinThresholdRate((n * 0.9).toFixed(2));
+              }
             }}
-            placeholder="240.00"
+            placeholder="180.00"
+            placeholderTextColor={COLORS.textMuted}
+            keyboardType="numeric"
+            style={styles.input}
+          />
+        </View>
+
+        {/* Default+ Rate (₹) */}
+        <View style={styles.fieldHalf}>
+          <Text variant="labelSm" color={COLORS.primary} style={styles.label}>
+            Default+ Rate (₹)
+          </Text>
+          <RNTextInput
+            value={defaultPlusRate}
+            onChangeText={setDefaultPlusRate}
+            placeholder="205.00"
+            placeholderTextColor={COLORS.textMuted}
+            keyboardType="numeric"
+            style={styles.input}
+          />
+        </View>
+
+        {/* Minimum Threshold Rate (₹) */}
+        <View style={styles.fieldHalf}>
+          <Text
+            variant="labelSm"
+            color={COLORS.textSecondary}
+            style={styles.label}
+          >
+            Min Threshold Rate (₹)
+          </Text>
+          <RNTextInput
+            value={minThresholdRate}
+            onChangeText={setMinThresholdRate}
+            placeholder="160.00"
             placeholderTextColor={COLORS.textMuted}
             keyboardType="numeric"
             style={styles.input}
