@@ -23,15 +23,12 @@ export const PaymentModeSelector: React.FC<PaymentModeSelectorProps> = ({
 }) => {
   const desktopOptions: { id: PaymentMode; label: string }[] = [
     { id: "cash", label: "Cash" },
-    { id: "upi", label: "UPI" },
-    { id: "credit", label: "Credit (Net-15)" },
-    { id: "bank_transfer", label: "Bank Transfer" },
+    { id: "online", label: "Online" },
   ];
 
   const mobileOptions: { id: PaymentMode; label: string }[] = [
     { id: "cash", label: "Cash" },
-    { id: "upi", label: "UPI / NEFT" },
-    { id: "credit", label: "Credit" },
+    { id: "online", label: "Online" },
   ];
 
   const options = isMobile ? mobileOptions : desktopOptions;

@@ -20,10 +20,16 @@ export const RoleSwitcherPills: React.FC<{ compact?: boolean }> = ({
   compact = true,
 }) => {
   const pathname = usePathname();
-  const { activeRole, setActiveRole, authenticatedRole } = useRoleContext();
+  const { activeRole, setActiveRole, authenticatedRole, isAdmin } =
+    useRoleContext();
 
   const [modalVisible, setModalVisible] = useState(false);
   const [targetRole, setTargetRole] = useState<UserRole | null>(null);
+
+  // Strictly Admin-only: regular users cannot see or access the switcher
+  if (!isAdmin) {
+    return null;
+  }
 
   const roles: { id: UserRole; label: string }[] = [
     { id: "supervisor", label: "Supervisor" },
@@ -177,6 +183,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.sm,
     padding: 2,
     width: "100%",
+    maxWidth: 360,
+    alignSelf: "center",
   },
   compactContainer: {
     padding: 2,

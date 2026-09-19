@@ -9,18 +9,24 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import {
-    Alert,
-    Platform,
-    Pressable,
-    TextInput as RNTextInput,
-    ScrollView,
-    StyleSheet,
-    View,
+  Alert,
+  Platform,
+  Pressable,
+  TextInput as RNTextInput,
+  ScrollView,
+  StyleSheet,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ConsignmentsLogTable } from "../../components/domain/ConsignmentsLogTable";
 import { OverdueAccountsCard } from "../../components/domain/OverdueAccountsCard";
 import { OwnerMetricStrip } from "../../components/domain/OwnerMetricStrip";
+import { OwnerProductsMobileEmbed } from "../../components/domain/OwnerProductsMobileEmbed";
+import { UserManagementEmbed } from "../../components/domain/UserManagementEmbed";
+import {
+  OwnerMobileBottomNav,
+  OwnerTab,
+} from "../../components/navigation/OwnerMobileBottomNav";
 import { RoleSwitcherPills } from "../../components/navigation/RoleSwitcherPills";
 import { Button } from "../../components/ui/Button";
 import { Text } from "../../components/ui/Text";
@@ -29,20 +35,20 @@ import { RADIUS, SPACING } from "../../constants/spacing";
 import { useResponsive } from "../../hooks/useResponsive";
 import { useRoleContext } from "../../hooks/useRoleContext";
 import {
-    INITIAL_CREDIT_ACCOUNTS,
-    INITIAL_OWNER_KPIS,
-    INITIAL_RECONCILIATION_RECORDS,
+  INITIAL_CREDIT_ACCOUNTS,
+  INITIAL_OWNER_KPIS,
+  INITIAL_RECONCILIATION_RECORDS,
 } from "../../services/api/mockData";
 import {
-    CreditAccount,
-    OwnerFiscalKPI,
-    ReconciliationRecord,
+  CreditAccount,
+  OwnerFiscalKPI,
+  ReconciliationRecord,
 } from "../../types/models";
 
 export default function OwnerFiscalDashboard() {
   const { isDesktop, isMobile } = useResponsive();
   const insets = useSafeAreaInsets();
-  const { logout } = useRoleContext();
+  const { logout, isAdmin } = useRoleContext();
 
   // State
   const [metrics, setMetrics] = useState<OwnerFiscalKPI>(INITIAL_OWNER_KPIS);
@@ -55,6 +61,8 @@ export default function OwnerFiscalDashboard() {
   const [isReconciling, setIsReconciling] = useState(false);
   const [reconciledToast, setReconciledToast] = useState(false);
   const [topSearch, setTopSearch] = useState("");
+  // Mobile tab state — controls which tab's content is shown inline
+  const [activeOwnerTab, setActiveOwnerTab] = useState<OwnerTab>("dashboard");
 
   const filteredRecords = useMemo(() => {
     if (!topSearch.trim()) return records;
@@ -104,7 +112,7 @@ export default function OwnerFiscalDashboard() {
       <View style={styles.desktopContainer}>
         {/* Top Action Header */}
         <View style={styles.desktopTopHeader}>
-          {/* Left: Brand & Links */}
+          {/* Left: Brand & Owner Navigation */}
           <View style={styles.desktopHeaderLeft}>
             <View style={styles.brand}>
               <View style={styles.logoIcon}>
@@ -121,31 +129,111 @@ export default function OwnerFiscalDashboard() {
 
             <View style={styles.vDivider} />
 
-            <Pressable
-              onPress={() => router.replace("/(owner)/products" as any)}
-              style={styles.navLinkItem}
-              accessibilityRole="link"
-            >
-              <MaterialIcons
-                name="inventory"
-                size={14}
-                color={COLORS.textSecondary}
-                style={{ marginRight: 4 }}
-              />
-              <Text
-                variant="labelSm"
-                color={COLORS.textSecondary}
-                style={styles.navText}
+            {/* Owner Navigation: Dashboard | Product Catalog | Users */}
+            <View style={styles.ownerNavLinks}>
+              <Pressable
+                onPress={() => setActiveOwnerTab("dashboard")}
+                style={[
+                  styles.navLinkItem,
+                  activeOwnerTab === "dashboard" && styles.activeNavLinkItem,
+                ]}
+                accessibilityRole="tab"
+                accessibilityState={{
+                  selected: activeOwnerTab === "dashboard",
+                }}
               >
-                Product Catalog
-              </Text>
-            </Pressable>
+                <MaterialIcons
+                  name="dashboard"
+                  size={15}
+                  color={
+                    activeOwnerTab === "dashboard"
+                      ? COLORS.primary
+                      : COLORS.textSecondary
+                  }
+                  style={{ marginRight: 5 }}
+                />
+                <Text
+                  variant="labelSm"
+                  color={
+                    activeOwnerTab === "dashboard"
+                      ? COLORS.primary
+                      : COLORS.textSecondary
+                  }
+                  style={
+                    activeOwnerTab === "dashboard"
+                      ? styles.activeNavText
+                      : styles.navText
+                  }
+                >
+                  Dashboard
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => router.replace("/(owner)/products" as any)}
+                style={styles.navLinkItem}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: false }}
+              >
+                <MaterialIcons
+                  name="inventory-2"
+                  size={15}
+                  color={COLORS.textSecondary}
+                  style={{ marginRight: 5 }}
+                />
+                <Text
+                  variant="labelSm"
+                  color={COLORS.textSecondary}
+                  style={styles.navText}
+                >
+                  Product Catalog
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => setActiveOwnerTab("users")}
+                style={[
+                  styles.navLinkItem,
+                  activeOwnerTab === "users" && styles.activeNavLinkItem,
+                ]}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: activeOwnerTab === "users" }}
+              >
+                <MaterialIcons
+                  name="group"
+                  size={15}
+                  color={
+                    activeOwnerTab === "users"
+                      ? COLORS.primary
+                      : COLORS.textSecondary
+                  }
+                  style={{ marginRight: 5 }}
+                />
+                <Text
+                  variant="labelSm"
+                  color={
+                    activeOwnerTab === "users"
+                      ? COLORS.primary
+                      : COLORS.textSecondary
+                  }
+                  style={
+                    activeOwnerTab === "users"
+                      ? styles.activeNavText
+                      : styles.navText
+                  }
+                >
+                  Users
+                </Text>
+              </Pressable>
+            </View>
           </View>
 
-          {/* Center: Role Switcher */}
-          <View style={styles.desktopRoleCenter}>
-            <RoleSwitcherPills compact />
-          </View>
+          {/* Center: Admin Workspace Switcher (Admin-Only) */}
+          {isAdmin && (
+            <View style={styles.desktopRoleCenter}>
+              <RoleSwitcherPills compact />
+            </View>
+          )}
 
           {/* Right: Search Box & Action Buttons */}
           <View style={styles.desktopHeaderRight}>
@@ -166,7 +254,7 @@ export default function OwnerFiscalDashboard() {
             </View>
 
             <Button
-              title={isReconciling ? "Syncing..." : "Reconcile"}
+              title={isReconciling ? "Syncing..." : ""}
               icon="sync"
               variant="outline"
               size="sm"
@@ -199,37 +287,48 @@ export default function OwnerFiscalDashboard() {
           contentContainerStyle={styles.desktopScrollContent}
         >
           <View style={styles.desktopMaxContainer}>
-            {/* Reconciled Toast */}
-            {reconciledToast && (
-              <View style={styles.toastBanner}>
-                <MaterialIcons
-                  name="check-circle"
-                  size={18}
-                  color={COLORS.statusPaidText}
+            {activeOwnerTab === "dashboard" && (
+              <>
+                {/* Reconciled Toast */}
+                {reconciledToast && (
+                  <View style={styles.toastBanner}>
+                    <MaterialIcons
+                      name="check-circle"
+                      size={18}
+                      color={COLORS.statusPaidText}
+                    />
+                    <Text
+                      variant="bodySm"
+                      color={COLORS.textPrimary}
+                      style={{ fontWeight: "500" }}
+                    >
+                      All terminal ledgers reconciled with VAHAN gate records
+                      and UPI bank feeds.
+                    </Text>
+                  </View>
+                )}
+
+                {/* 4 Minimal Key Metrics */}
+                <OwnerMetricStrip metrics={metrics} isDesktop={true} />
+
+                {/* Section 1: Overdue / Credit Accounts */}
+                <OverdueAccountsCard
+                  accounts={accounts}
+                  isDesktop={true}
+                  onViewLedger={handleViewLedger}
                 />
-                <Text
-                  variant="bodySm"
-                  color={COLORS.textPrimary}
-                  style={{ fontWeight: "500" }}
-                >
-                  All terminal ledgers reconciled with VAHAN gate records and
-                  UPI bank feeds.
-                </Text>
-              </View>
+
+                {/* Section 2: Today's Consignments Log */}
+                <ConsignmentsLogTable
+                  records={filteredRecords}
+                  isDesktop={true}
+                />
+              </>
             )}
 
-            {/* 4 Minimal Key Metrics */}
-            <OwnerMetricStrip metrics={metrics} isDesktop={true} />
-
-            {/* Section 1: Overdue / Credit Accounts */}
-            <OverdueAccountsCard
-              accounts={accounts}
-              isDesktop={true}
-              onViewLedger={handleViewLedger}
-            />
-
-            {/* Section 2: Today's Consignments Log */}
-            <ConsignmentsLogTable records={filteredRecords} isDesktop={true} />
+            {activeOwnerTab === "users" && (
+              <UserManagementEmbed isDesktop={true} />
+            )}
           </View>
         </ScrollView>
       </View>
@@ -245,10 +344,12 @@ export default function OwnerFiscalDashboard() {
       <View
         style={[styles.mobileHeader, { paddingTop: Math.max(insets.top, 12) }]}
       >
-        {/* Role Switcher Nav */}
-        <View style={styles.mobileRoleNav}>
-          <RoleSwitcherPills compact />
-        </View>
+        {/* Role Switcher Nav - Admin Only */}
+        {isAdmin && (
+          <View style={styles.mobileRoleNav}>
+            <RoleSwitcherPills compact />
+          </View>
+        )}
 
         {/* Title Bar & Quick Actions */}
         <View style={styles.mobileTitleBar}>
@@ -341,82 +442,60 @@ export default function OwnerFiscalDashboard() {
         </View>
       </View>
 
-      {/* Main Scroll Content */}
+      {/* Main Scroll Content — driven by activeOwnerTab */}
       <ScrollView
+        key={activeOwnerTab}
         style={styles.mobileScroll}
-        contentContainerStyle={styles.mobileScrollContent}
+        contentContainerStyle={[
+          styles.mobileScrollContent,
+          { paddingBottom: Math.max(insets.bottom, 24) + 72 },
+        ]}
       >
-        {/* Reconciled Toast */}
-        {reconciledToast && (
-          <View style={styles.mobileToast}>
-            <MaterialIcons
-              name="check-circle"
-              size={16}
-              color={COLORS.statusPaidText}
+        {activeOwnerTab === "dashboard" && (
+          <>
+            {/* Reconciled Toast */}
+            {reconciledToast && (
+              <View style={styles.mobileToast}>
+                <MaterialIcons
+                  name="check-circle"
+                  size={16}
+                  color={COLORS.statusPaidText}
+                />
+                <Text
+                  variant="bodySm"
+                  color={COLORS.textPrimary}
+                  style={{ flex: 1, fontSize: 11 }}
+                >
+                  Terminal records reconciled with bank feeds.
+                </Text>
+              </View>
+            )}
+
+            {/* 2x2 Metric Summary Grid */}
+            <OwnerMetricStrip metrics={metrics} isDesktop={false} />
+
+            {/* Section 1: Overdue / Credit Accounts */}
+            <OverdueAccountsCard
+              accounts={accounts}
+              isDesktop={false}
+              onViewLedger={handleViewLedger}
             />
-            <Text
-              variant="bodySm"
-              color={COLORS.textPrimary}
-              style={{ flex: 1, fontSize: 11 }}
-            >
-              Terminal records reconciled with bank feeds.
-            </Text>
-          </View>
+
+            {/* Section 2: Today's Consignments Log */}
+            <ConsignmentsLogTable records={records} isDesktop={false} />
+          </>
         )}
 
-        {/* 2x2 Metric Summary Grid */}
-        <OwnerMetricStrip metrics={metrics} isDesktop={false} />
+        {activeOwnerTab === "products" && <OwnerProductsMobileEmbed />}
 
-        {/* Section 1: Overdue / Credit Accounts */}
-        <OverdueAccountsCard
-          accounts={accounts}
-          isDesktop={false}
-          onViewLedger={handleViewLedger}
-        />
-
-        {/* Section 2: Today's Consignments Log */}
-        <ConsignmentsLogTable records={records} isDesktop={false} />
+        {activeOwnerTab === "users" && <UserManagementEmbed />}
       </ScrollView>
 
       {/* Sticky Bottom Navigation Bar */}
-      <View
-        style={[
-          styles.mobileBottomNav,
-          { paddingBottom: Math.max(insets.bottom, 12) },
-        ]}
-      >
-        <View style={styles.bottomNavItems}>
-          <Pressable style={styles.bottomTabActive}>
-            <MaterialIcons
-              name="dashboard"
-              size={20}
-              color={COLORS.textPrimary}
-            />
-            <Text
-              variant="labelSm"
-              color={COLORS.textPrimary}
-              style={styles.bottomTabLabelActive}
-            >
-              Console
-            </Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.bottomTab}
-            onPress={() => router.replace("/(owner)/products" as any)}
-            accessibilityRole="tab"
-          >
-            <MaterialIcons name="tune" size={20} color={COLORS.textMuted} />
-            <Text
-              variant="labelSm"
-              color={COLORS.textMuted}
-              style={styles.bottomTabLabel}
-            >
-              Settings
-            </Text>
-          </Pressable>
-        </View>
-      </View>
+      <OwnerMobileBottomNav
+        activeTab={activeOwnerTab}
+        onTabChange={setActiveOwnerTab}
+      />
     </View>
   );
 }
@@ -474,11 +553,16 @@ const styles = StyleSheet.create({
     height: 16,
     backgroundColor: COLORS.border,
   },
+  ownerNavLinks: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
   navLinkItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     borderRadius: RADIUS.xs,
     ...Platform.select({
       web: {
@@ -486,16 +570,25 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  activeNavLinkItem: {
+    backgroundColor: "rgba(32, 138, 239, 0.08)",
+  },
   navText: {
     fontWeight: "500",
+    fontSize: 12,
     ...Platform.select({
       web: {
         cursor: "pointer",
       },
     }),
   },
+  activeNavText: {
+    fontWeight: "700",
+    fontSize: 12,
+    color: COLORS.primary,
+  },
   desktopRoleCenter: {
-    width: 320,
+    width: 340,
     marginHorizontal: SPACING.spaceBase,
     alignItems: "center",
     justifyContent: "center",
@@ -573,6 +666,8 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.spaceSm + 2,
   },
   mobileRoleNav: {
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: SPACING.spaceSm,
   },
   mobileTitleBar: {

@@ -29,10 +29,10 @@ export const DEV_ACCOUNTS: Record<UserRole, DevAccount> = {
     defaultRoute: "/(supervisor)/dispatch",
     profile: {
       id: "staff-sup-01",
-      name: "R. Kumar",
+      name: "",
       initials: "RK",
       role: "supervisor",
-      hub: "Salem Yard Bay 3",
+      hub: "",
     },
   },
   office: {
@@ -59,7 +59,8 @@ export const DEV_ACCOUNTS: Record<UserRole, DevAccount> = {
     email: "owner@gripwell.io",
     username: "owner",
     password: "password123",
-    description: "Fiscal Oversight, Executive Dashboard & Reconciliation",
+    description:
+      "Full Multi-Workspace Access — Executive Fiscal, Office Admin & Supervisor",
     defaultRoute: "/(owner)/dashboard",
     profile: {
       id: "staff-own-01",
@@ -67,6 +68,7 @@ export const DEV_ACCOUNTS: Record<UserRole, DevAccount> = {
       initials: "SR",
       role: "owner",
       hub: "Executive Headquarters",
+      isAdmin: true,
     },
   },
 };
@@ -104,7 +106,7 @@ export function validateCredentials(
     return {
       success: false,
       error:
-        "Account not found. Use dev credentials (e.g. supervisor@gripwell.io).",
+        "Account not found. Use dev credentials (e.g. admin@gripwell.io or owner@gripwell.io).",
     };
   }
 
@@ -121,7 +123,7 @@ export function validateCredentials(
 /**
  * Hierarchical Role Access Configuration:
  * - supervisor: Can ONLY access supervisor workspace
- * - office: Can ONLY access office workspace (requires respective credentials for other workspaces)
+ * - office: Can ONLY access office workspace
  * - owner: Can access ALL workspaces (owner, office, supervisor)
  */
 export const ROLE_PERMISSIONS: Record<UserRole, UserRole[]> = {

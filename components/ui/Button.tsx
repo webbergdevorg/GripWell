@@ -5,25 +5,20 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import React from "react";
 import {
-    ActivityIndicator,
-    Platform,
-    Pressable,
-    StyleProp,
-    StyleSheet,
-    TextStyle,
-    ViewStyle,
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  StyleProp,
+  StyleSheet,
+  TextStyle,
+  ViewStyle,
 } from "react-native";
 import { COLORS } from "../../constants/colors";
 import { RADIUS, SPACING } from "../../constants/spacing";
 import { Text } from "./Text";
 
 export type ButtonVariant =
-  | "primary"
-  | "secondary"
-  | "outline"
-  | "destructive"
-  | "ghost"
-  | "success";
+  "primary" | "secondary" | "outline" | "destructive" | "ghost" | "success";
 export type ButtonSize = "sm" | "md" | "lg";
 
 export interface ButtonProps {

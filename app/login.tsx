@@ -8,15 +8,14 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    View,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { Text } from "../components/ui/Text";
@@ -110,123 +109,7 @@ export default function LoginScreen() {
           <View
             style={[styles.mainWrapper, isDesktop && styles.desktopWrapper]}
           >
-            {/* LEFT HERO PANEL (Visible on Desktop / Tablets) */}
-            {isDesktop && (
-              <View style={styles.heroPanel}>
-                <View style={styles.heroHeader}>
-                  <View style={styles.brandRow}>
-                    <View style={styles.brandIconWrapper}>
-                      <MaterialIcons
-                        name="local-shipping"
-                        size={22}
-                        color="#FFFFFF"
-                      />
-                    </View>
-                    <Text variant="headlineMd" style={styles.brandTitle}>
-                      Gripwell
-                    </Text>
-                  </View>
-                  <View style={styles.telemetryPill}>
-                    <View style={styles.pulsingDot} />
-                    <Text variant="labelSm" color={COLORS.statusPaidText}>
-                      Terminal Gateway v2.4 • Operational
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.heroBody}>
-                  <Text variant="headlineXl" style={styles.heroHeading}>
-                    Integrated Dispatch & Fiscal Operations Portal
-                  </Text>
-                  <Text
-                    variant="bodyLg"
-                    color={COLORS.textSecondary}
-                    style={styles.heroSubheading}
-                  >
-                    Secure role-based access for logistics terminal dock
-                    supervisors, administrative billing officers, and executive
-                    fiscal management.
-                  </Text>
-
-                  {/* Feature Pillars */}
-                  <View style={styles.featureList}>
-                    <View style={styles.featureItem}>
-                      <View style={styles.featureBullet}>
-                        <MaterialIcons
-                          name="qr-code-scanner"
-                          size={16}
-                          color={COLORS.secondary}
-                        />
-                      </View>
-                      <View style={styles.featureTextCol}>
-                        <Text variant="labelMd" style={styles.featureTitle}>
-                          Dock Supervisor Workspace
-                        </Text>
-                        <Text variant="bodySm" color={COLORS.textSecondary}>
-                          Bay loading sequence, cargo photo capture, and
-                          instantaneous gate pass issuance.
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.featureItem}>
-                      <View style={styles.featureBullet}>
-                        <MaterialIcons
-                          name="receipt-long"
-                          size={16}
-                          color={COLORS.secondary}
-                        />
-                      </View>
-                      <View style={styles.featureTextCol}>
-                        <Text variant="labelMd" style={styles.featureTitle}>
-                          Office Admin Desk
-                        </Text>
-                        <Text variant="bodySm" color={COLORS.textSecondary}>
-                          Multi-mode payment settlement, customer credit ledger,
-                          and advance pool offset strip.
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.featureItem}>
-                      <View style={styles.featureBullet}>
-                        <MaterialIcons
-                          name="insights"
-                          size={16}
-                          color={COLORS.secondary}
-                        />
-                      </View>
-                      <View style={styles.featureTextCol}>
-                        <Text variant="labelMd" style={styles.featureTitle}>
-                          Owner Fiscal Dashboard
-                        </Text>
-                        <Text variant="bodySm" color={COLORS.textSecondary}>
-                          Aggregated gross run-rate, overdue aging analysis, and
-                          automated bank reconciliation.
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                </View>
-
-                <View style={styles.heroFooter}>
-                  <MaterialIcons
-                    name="lock"
-                    size={14}
-                    color={COLORS.textMuted}
-                  />
-                  <Text
-                    variant="labelSm"
-                    color={COLORS.textMuted}
-                    style={styles.securityText}
-                  >
-                    Encrypted TLS 1.3 • Multi-Dock Sync • ISO 27001 Protocol
-                  </Text>
-                </View>
-              </View>
-            )}
-
-            {/* RIGHT AUTH CARD */}
+            {/* AUTH CARD */}
             <View
               style={[styles.authPanel, isDesktop && styles.authPanelDesktop]}
             >
@@ -414,12 +297,6 @@ export default function LoginScreen() {
                       const isSupervisor = role === "supervisor";
                       const isOffice = role === "office";
 
-                      const badgeVariant = isSupervisor
-                        ? "ready_for_seal"
-                        : isOffice
-                          ? "credit"
-                          : "settled";
-
                       const roleIcon = isSupervisor
                         ? "local-shipping"
                         : isOffice
@@ -445,10 +322,6 @@ export default function LoginScreen() {
                                   >
                                     {acc.roleLabel}
                                   </Text>
-                                  <Badge
-                                    label={acc.profile.hub}
-                                    variant={badgeVariant as any}
-                                  />
                                 </View>
                                 <Text
                                   variant="bodySm"

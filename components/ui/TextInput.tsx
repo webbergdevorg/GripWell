@@ -4,14 +4,14 @@
 
 import React, { useState } from "react";
 import {
-    Platform,
-    TextInput as RNTextInput,
-    TextInputProps as RNTextInputProps,
-    StyleProp,
-    StyleSheet,
-    TextStyle,
-    View,
-    ViewStyle,
+  Platform,
+  TextInput as RNTextInput,
+  TextInputProps as RNTextInputProps,
+  StyleProp,
+  StyleSheet,
+  TextStyle,
+  View,
+  ViewStyle,
 } from "react-native";
 import { COLORS } from "../../constants/colors";
 import { RADIUS, SPACING } from "../../constants/spacing";

@@ -6,24 +6,24 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
-    Alert,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    View,
+  Alert,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
 } from "react-native";
 import { COLORS } from "../../constants/colors";
 import {
-    INITIAL_ADVANCE_DEPOSITS,
-    INITIAL_CREDIT_KPIS,
-    INITIAL_CREDIT_LOADS,
+  INITIAL_ADVANCE_DEPOSITS,
+  INITIAL_CREDIT_KPIS,
+  INITIAL_CREDIT_LOADS,
 } from "../../constants/mockCreditLedger";
 import { RADIUS, SPACING } from "../../constants/spacing";
 import {
-    AdvanceDepositItem,
-    CreditLedgerItem,
-    CreditLedgerKPISummary,
+  AdvanceDepositItem,
+  CreditLedgerItem,
+  CreditLedgerKPISummary,
 } from "../../types/models";
 import { Text } from "../ui/Text";
 import { AdvanceDepositCard } from "./AdvanceDepositCard";

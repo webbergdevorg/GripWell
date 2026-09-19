@@ -19,6 +19,7 @@ export interface RoleContextType {
   staff: StaffProfile;
   terminalHub: string;
   setTerminalHub: (hub: string) => void;
+  isAdmin: boolean;
   login: (
     identifier: string,
     pass: string,
@@ -82,6 +83,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     setIsAuthenticated(false);
   };
 
+  const isAdmin = authenticatedRole === "owner" || staff.isAdmin === true;
+
   return (
     <RoleContext.Provider
       value={{
@@ -92,6 +95,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         staff,
         terminalHub,
         setTerminalHub,
+        isAdmin,
         login,
         quickLogin,
         logout,

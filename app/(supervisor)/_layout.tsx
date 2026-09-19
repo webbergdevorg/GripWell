@@ -20,6 +20,9 @@ export default function SupervisorLayout() {
     if (authenticatedRole === "office") {
       return <Redirect href="/(office)/billing" />;
     }
+    if (authenticatedRole === "owner") {
+      return <Redirect href="/(owner)/dashboard" />;
+    }
     return <Redirect href="/login" />;
   }
 

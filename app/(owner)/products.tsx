@@ -14,24 +14,28 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import {
-  Alert,
-  Platform,
-  Pressable,
-  TextInput as RNTextInput,
-  ScrollView,
-  StyleSheet,
-  View,
+    Alert,
+    Platform,
+    Pressable,
+    TextInput as RNTextInput,
+    ScrollView,
+    StyleSheet,
+    View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ProductItemCard } from "../../components/domain/ProductItemCard";
 import { QuickAddProductDrawer } from "../../components/domain/QuickAddProductDrawer";
+import {
+    OwnerMobileBottomNav,
+    OwnerTab,
+} from "../../components/navigation/OwnerMobileBottomNav";
 import { RoleSwitcherPills } from "../../components/navigation/RoleSwitcherPills";
 import { Text } from "../../components/ui/Text";
 import { COLORS } from "../../constants/colors";
 import {
-  INITIAL_PRODUCT_KPIS,
-  INITIAL_PRODUCTS,
-  PRODUCT_CATEGORIES,
+    INITIAL_PRODUCT_KPIS,
+    INITIAL_PRODUCTS,
+    PRODUCT_CATEGORIES,
 } from "../../constants/mockProducts";
 import { RADIUS, SPACING } from "../../constants/spacing";
 import { useResponsive } from "../../hooks/useResponsive";
@@ -41,7 +45,7 @@ import { ProductSKU } from "../../types/models";
 export default function ManageProductsScreen() {
   const insets = useSafeAreaInsets();
   const { isDesktop, width } = useResponsive();
-  const { staff, terminalHub } = useRoleContext();
+  const { staff, terminalHub, isAdmin, logout } = useRoleContext();
 
   const [products, setProducts] = useState<ProductSKU[]>(INITIAL_PRODUCTS);
   const [selectedCategory, setSelectedCategory] = useState<string>("All (14)");
@@ -109,49 +113,42 @@ export default function ManageProductsScreen() {
     );
   };
 
-  const handleUpdateRate = (productId: string, newRate: number) => {
+  const handleUpdateRate = (
+    productId: string,
+    newRate: number,
+    newDefaultPlus?: number,
+    newMinThreshold?: number,
+  ) => {
     setProducts((prev) =>
       prev.map((p) => {
         if (p.id === productId) {
           const unit = p.unitMetric === "pcs" ? "pc" : p.unitMetric;
+          const defaultPlus =
+            newDefaultPlus ?? (p.defaultPlusRate || Math.round(newRate * 1.12));
+          const minThreshold =
+            newMinThreshold ??
+            (p.minThresholdRate || Math.round(newRate * 0.9));
           return {
             ...p,
             defaultBaseRate: newRate,
+            defaultPlusRate: defaultPlus,
+            minThresholdRate: minThreshold,
             rateDisplay: `₹${newRate.toFixed(2)} / ${unit}`,
           };
         }
         return p;
       }),
     );
-    showToast(`Updated rate for ${productId} to ₹${newRate.toFixed(2)}`);
-  };
-
-  const handleQuickAdjustStock = (productId: string, delta: number) => {
-    setProducts((prev) =>
-      prev.map((p) => {
-        if (p.id === productId) {
-          const newStock = Math.max(0, p.warehouseStock + delta);
-          const isLow = newStock <= 100;
-          return {
-            ...p,
-            warehouseStock: newStock,
-            warehouseStockDisplay: `${newStock} ${p.unitMetric}`,
-            isLowStock: isLow,
-            status: isLow ? "LOW STOCK" : "ACTIVE",
-          };
-        }
-        return p;
-      }),
-    );
+    showToast(`Updated pricing for ${productId}`);
   };
 
   const handleExportCSV = () => {
     const csvHeader =
-      "SKU,Product Name,Category,Base Rate (INR),Unit,Stock,HSN\n";
+      "SKU,Product Name,Category,Default Price (INR),Default+ Price (INR),Min Threshold Price (INR),Unit,HSN\n";
     const csvRows = products
       .map(
         (p) =>
-          `"${p.sku}","${p.name}","${p.category}",${p.defaultBaseRate},"${p.unitMetric}",${p.warehouseStock},"${p.hsnCode}"`,
+          `"${p.sku}","${p.name}","${p.category}",${p.defaultBaseRate},${p.defaultPlusRate ?? Math.round(p.defaultBaseRate * 1.12)},${p.minThresholdRate ?? Math.round(p.defaultBaseRate * 0.9)},"${p.unitMetric}","${p.hsnCode}"`,
       )
       .join("\n");
     const fullCsv = csvHeader + csvRows;
@@ -194,67 +191,85 @@ export default function ManageProductsScreen() {
               <MaterialIcons name="local-shipping" size={16} color="#FFFFFF" />
             </View>
             <Text variant="labelMd" style={styles.brandTitle}>
-              GripWell
+              Gripwell
             </Text>
             <View style={styles.headerDivider} />
-            {/* Breadcrumb */}
-            <View style={styles.desktopBreadcrumb}>
+
+            {/* Owner Navigation: Dashboard | Product Catalog */}
+            <View style={styles.ownerNavLinks}>
               <Pressable
-                onPress={() => router.replace("/(owner)/dashboard")}
-                style={({ pressed }: any) => [
-                  styles.breadcrumbLink,
-                  pressed && styles.pressed,
-                ]}
+                onPress={() => router.replace("/(owner)/dashboard" as any)}
+                style={styles.navLinkItem}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: false }}
               >
+                <MaterialIcons
+                  name="dashboard"
+                  size={15}
+                  color={COLORS.textSecondary}
+                  style={{ marginRight: 5 }}
+                />
                 <Text
                   variant="labelSm"
-                  color={COLORS.textMuted}
-                  style={styles.breadcrumbText}
+                  color={COLORS.textSecondary}
+                  style={styles.navText}
                 >
-                  CONSOLE
+                  Dashboard
                 </Text>
               </Pressable>
-              <MaterialIcons
-                name="chevron-right"
-                size={14}
-                color={COLORS.textMuted}
-              />
-              <Text
-                variant="labelSm"
-                color={COLORS.secondary}
-                style={styles.breadcrumbActive}
+
+              <Pressable
+                style={[styles.navLinkItem, styles.activeNavLinkItem]}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: true }}
               >
-                PRODUCT CATALOG
-              </Text>
+                <MaterialIcons
+                  name="inventory-2"
+                  size={15}
+                  color={COLORS.primary}
+                  style={{ marginRight: 5 }}
+                />
+                <Text
+                  variant="labelSm"
+                  color={COLORS.primary}
+                  style={styles.activeNavText}
+                >
+                  Product Catalog
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => router.replace("/(owner)/users" as any)}
+                style={styles.navLinkItem}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: false }}
+              >
+                <MaterialIcons
+                  name="group"
+                  size={15}
+                  color={COLORS.textSecondary}
+                  style={{ marginRight: 5 }}
+                />
+                <Text
+                  variant="labelSm"
+                  color={COLORS.textSecondary}
+                  style={styles.navText}
+                >
+                  Users
+                </Text>
+              </Pressable>
             </View>
           </View>
 
-          {/* Role Switcher Center */}
-          <View style={styles.desktopRoleCenter}>
-            <RoleSwitcherPills compact />
-          </View>
+          {/* Role Switcher Center - Admin Only */}
+          {isAdmin && (
+            <View style={styles.desktopRoleCenter}>
+              <RoleSwitcherPills compact />
+            </View>
+          )}
 
           {/* Desktop Right */}
           <View style={styles.desktopHeaderRight}>
-            <Pressable
-              onPress={() => router.replace("/(owner)/dashboard")}
-              style={({ pressed }: any) => [
-                styles.consoleSwitchBtn,
-                pressed && styles.pressed,
-              ]}
-            >
-              <MaterialIcons
-                name="dashboard"
-                size={15}
-                color={COLORS.textPrimary}
-              />
-              <Text variant="labelSm" style={{ fontWeight: "600" }}>
-                Console Dashboard
-              </Text>
-            </Pressable>
-
-            <View style={styles.headerDivider} />
-
             <View style={styles.hubIndicator}>
               <View style={styles.hubDot} />
               <Text variant="bodySm" color={COLORS.textSecondary}>
@@ -267,6 +282,25 @@ export default function ManageProductsScreen() {
                 {staff.initials}
               </Text>
             </View>
+
+            <Pressable
+              onPress={() => {
+                logout();
+                router.replace("/login" as any);
+              }}
+              style={({ pressed }: any) => [
+                styles.signOutBtn,
+                pressed && styles.pressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Sign out"
+            >
+              <MaterialIcons
+                name="logout"
+                size={15}
+                color={COLORS.textSecondary}
+              />
+            </Pressable>
           </View>
         </View>
 
@@ -489,7 +523,6 @@ export default function ManageProductsScreen() {
                     <ProductItemCard
                       product={prod}
                       onUpdateRate={handleUpdateRate}
-                      onQuickAdjustStock={handleQuickAdjustStock}
                       isDesktop={true}
                     />
                   </View>
@@ -511,37 +544,44 @@ export default function ManageProductsScreen() {
       <View
         style={[styles.mobileTopBar, { paddingTop: Math.max(insets.top, 10) }]}
       >
-        {/* Top Role Switcher Row for Quick Multi-Role Hop */}
-        <View style={styles.mobileRoleRow}>
-          <RoleSwitcherPills compact />
-        </View>
+        {/* Top Role Switcher Row - Admin Only */}
+        {isAdmin && (
+          <View style={styles.mobileRoleRow}>
+            <RoleSwitcherPills compact />
+          </View>
+        )}
 
         {/* Main Header Row */}
         <View style={styles.mobileHeaderRow}>
           <View style={styles.mobileHeaderLeft}>
-            <MaterialIcons name="shield" size={20} color={COLORS.primary} />
+            <MaterialIcons
+              name="inventory-2"
+              size={20}
+              color={COLORS.primary}
+            />
             <Text variant="headlineMd" style={styles.mobileHeaderTitle}>
-              Settings
+              Product Catalog
             </Text>
           </View>
 
           <View style={styles.mobileHeaderRight}>
             <Pressable
+              onPress={() => {
+                logout();
+                router.replace("/login" as any);
+              }}
               style={({ pressed }: any) => [
                 styles.mobileHeaderIconBtn,
                 pressed && styles.pressed,
               ]}
-              accessibilityLabel="Notifications"
+              accessibilityLabel="Sign out of terminal"
             >
               <MaterialIcons
-                name="notifications"
-                size={20}
+                name="logout"
+                size={18}
                 color={COLORS.textSecondary}
               />
             </Pressable>
-            <View style={styles.mobileAvatar}>
-              <MaterialIcons name="person" size={17} color="#FFFFFF" />
-            </View>
           </View>
         </View>
       </View>
@@ -774,57 +814,23 @@ export default function ManageProductsScreen() {
                 key={prod.id}
                 product={prod}
                 onUpdateRate={handleUpdateRate}
-                onQuickAdjustStock={handleQuickAdjustStock}
               />
             ))
           )}
         </View>
       </ScrollView>
 
-      {/* Fixed Bottom Safe Navigation Bar (Stitch Nav) */}
-      <View
-        style={[
-          styles.mobileBottomNav,
-          { paddingBottom: Math.max(insets.bottom, 12) },
-        ]}
-      >
-        <View style={styles.bottomNavRow}>
-          {/* Console Tab (Inactive) */}
-          <Pressable
-            onPress={() => router.replace("/(owner)/dashboard")}
-            style={({ pressed }: any) => [
-              styles.bottomNavItem,
-              pressed && styles.pressed,
-            ]}
-            accessibilityRole="tab"
-          >
-            <MaterialIcons name="terminal" size={22} color={COLORS.textMuted} />
-            <Text
-              variant="labelSm"
-              color={COLORS.textMuted}
-              style={styles.bottomNavText}
-            >
-              Console
-            </Text>
-          </Pressable>
-
-          {/* Settings Tab (Active) */}
-          <Pressable
-            style={styles.bottomNavItem}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: true }}
-          >
-            <MaterialIcons name="tune" size={22} color={COLORS.textPrimary} />
-            <Text
-              variant="labelSm"
-              color={COLORS.textPrimary}
-              style={[styles.bottomNavText, styles.bottomNavTextActive]}
-            >
-              Settings
-            </Text>
-          </Pressable>
-        </View>
-      </View>
+      {/* Fixed Bottom Safe Navigation Bar */}
+      <OwnerMobileBottomNav
+        activeTab={"products" as OwnerTab}
+        onTabChange={(tab) => {
+          if (tab === "dashboard") {
+            router.replace("/(owner)/dashboard" as any);
+          } else if (tab === "users") {
+            router.replace("/(owner)/users" as any);
+          }
+        }}
+      />
     </View>
   );
 }
@@ -871,24 +877,51 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.border,
     marginHorizontal: 4,
   },
-  desktopBreadcrumb: {
+  ownerNavLinks: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 6,
   },
-  breadcrumbLink: {
-    paddingVertical: 2,
+  navLinkItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: RADIUS.xs,
+    ...Platform.select({
+      web: {
+        cursor: "pointer",
+      },
+    }),
   },
-  breadcrumbText: {
-    letterSpacing: 0.5,
+  activeNavLinkItem: {
+    backgroundColor: "rgba(32, 138, 239, 0.08)",
+  },
+  navText: {
     fontWeight: "500",
+    fontSize: 12,
   },
-  breadcrumbActive: {
-    letterSpacing: 0.5,
-    fontWeight: "600",
+  activeNavText: {
+    fontWeight: "700",
+    fontSize: 12,
+    color: COLORS.primary,
+  },
+  signOutBtn: {
+    padding: 6,
+    borderRadius: RADIUS.xs,
+    backgroundColor: COLORS.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: "center",
+    justifyContent: "center",
+    ...Platform.select({
+      web: {
+        cursor: "pointer",
+      },
+    }),
   },
   desktopRoleCenter: {
-    width: 320,
+    width: 340,
     marginHorizontal: SPACING.spaceBase,
     alignItems: "center",
     justifyContent: "center",
@@ -1142,6 +1175,7 @@ const styles = StyleSheet.create({
   },
   mobileRoleRow: {
     alignItems: "center",
+    justifyContent: "center",
     marginBottom: 6,
   },
   mobileHeaderRow: {

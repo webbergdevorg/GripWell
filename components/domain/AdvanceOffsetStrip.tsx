@@ -4,7 +4,7 @@
  */
 
 import { MaterialIcons } from "@expo/vector-icons";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Platform, Pressable, StyleSheet, View } from "react-native";
 import { COLORS } from "../../constants/colors";
 import { RADIUS, SPACING } from "../../constants/spacing";
@@ -35,6 +35,12 @@ export const AdvanceOffsetStrip: React.FC<AdvanceOffsetStripProps> = ({
   );
   const isApplied = appliedAmount > 0;
 
+  useEffect(() => {
+    setInputVal(
+      appliedAmount > 0 ? String(appliedAmount) : String(availableAmount),
+    );
+  }, [appliedAmount, availableAmount]);
+
   if (isMobile) {
     return (
       <View style={styles.mobileContainer}>
@@ -63,6 +69,7 @@ export const AdvanceOffsetStrip: React.FC<AdvanceOffsetStripProps> = ({
         </View>
 
         <Pressable
+          disabled={!isApplied && availableAmount <= 0}
           onPress={() => {
             if (isApplied) {
               onRemoveAdvance();
@@ -70,7 +77,10 @@ export const AdvanceOffsetStrip: React.FC<AdvanceOffsetStripProps> = ({
               onApplyAdvance(availableAmount);
             }
           }}
-          style={styles.mobileToggle}
+          style={[
+            styles.mobileToggle,
+            !isApplied && availableAmount <= 0 && { opacity: 0.5 },
+          ]}
         >
           <Text
             variant="labelSm"
@@ -117,9 +127,10 @@ export const AdvanceOffsetStrip: React.FC<AdvanceOffsetStripProps> = ({
           variant={isApplied ? "outline" : "secondary"}
           size="sm"
           title={isApplied ? "Update" : "Apply"}
+          disabled={!isApplied && availableAmount <= 0}
           onPress={() => {
-            const num = parseFloat(inputVal) || 0;
-            onApplyAdvance(Math.min(num, availableAmount));
+            const num = parseFloat(inputVal.replace(/[^0-9.]/g, "")) || 0;
+            onApplyAdvance(Math.max(0, Math.min(num, availableAmount)));
           }}
         />
         {isApplied && (

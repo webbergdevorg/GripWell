@@ -7,11 +7,11 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { router, usePathname } from "expo-router";
 import React, { useMemo } from "react";
 import {
-    Platform,
-    Pressable,
-    TextInput as RNTextInput,
-    StyleSheet,
-    View,
+  Platform,
+  Pressable,
+  TextInput as RNTextInput,
+  StyleSheet,
+  View,
 } from "react-native";
 import { COLORS } from "../../constants/colors";
 import { RADIUS, SPACING } from "../../constants/spacing";
@@ -30,7 +30,7 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
   activeSection: propActiveSection,
 }) => {
   const pathname = usePathname();
-  const { staff, terminalHub, activeRole, setActiveRole, logout } =
+  const { staff, terminalHub, activeRole, setActiveRole, logout, isAdmin } =
     useRoleContext();
 
   // URL / route is the primary source of truth on Web/Desktop,
@@ -317,8 +317,8 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
           </View>
         </View>
 
-        {/* Center: Role Switcher - kept ONLY in Owner Workspace */}
-        {isOwnerWorkspace && (
+        {/* Center: Role Switcher - for Admin users across workspaces */}
+        {isAdmin && (
           <View style={styles.centerSection}>
             <RoleSwitcherPills compact />
           </View>
@@ -343,30 +343,6 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
           </View>
 
           <View style={styles.vDivider} />
-
-          {/* Terminal Hub Indicator */}
-          <View style={styles.hubIndicator}>
-            <View style={styles.hubDot} />
-            <Text
-              variant="bodySm"
-              color={COLORS.textSecondary}
-              style={styles.hubText}
-            >
-              {terminalHub}
-            </Text>
-          </View>
-
-          {/* User Profile Avatar */}
-          <View style={styles.profileSection}>
-            <View style={styles.avatar}>
-              <Text variant="labelSm" style={styles.avatarText}>
-                {staff.initials}
-              </Text>
-            </View>
-            <Text variant="bodySm" style={styles.staffName}>
-              {staff.name}
-            </Text>
-          </View>
 
           {/* Sign Out Button */}
           <Pressable
@@ -419,7 +395,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
   },
   centerSection: {
-    width: 320,
+    width: 340,
     marginHorizontal: SPACING.spaceBase,
     alignItems: "center",
     justifyContent: "center",

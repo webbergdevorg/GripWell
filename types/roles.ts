@@ -10,4 +10,5 @@ export interface StaffProfile {
   initials: string;
   role: UserRole;
   hub: string;
+  isAdmin?: boolean;
 }

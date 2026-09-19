@@ -1,7 +1,9 @@
 /**
  * Gripwell - Domain Component: ProductItemCard
- * Renders an individual product SKU inventory & pricing card.
- * Matches Google Stitch Screen 7 specifications exactly.
+ * Renders an individual product SKU pricing card with 3-tier rates:
+ * - Default Price
+ * - Default+ Price
+ * - Minimum Threshold Price
  */
 
 import { MaterialIcons } from "@expo/vector-icons";
@@ -20,27 +22,72 @@ import { Text } from "../ui/Text";
 
 export interface ProductItemCardProps {
   product: ProductSKU;
-  onUpdateRate: (productId: string, newRate: number) => void;
-  onQuickAdjustStock: (productId: string, delta: number) => void;
+  onUpdateRate: (
+    productId: string,
+    newRate: number,
+    newDefaultPlus?: number,
+    newMinThreshold?: number,
+  ) => void;
+  onQuickAdjustStock?: (productId: string, delta: number) => void;
   isDesktop?: boolean;
 }
 
 export const ProductItemCard: React.FC<ProductItemCardProps> = ({
   product,
   onUpdateRate,
-  onQuickAdjustStock,
   isDesktop = false,
 }) => {
   const [isEditingRate, setIsEditingRate] = useState(false);
-  const [tempRate, setTempRate] = useState(product.defaultBaseRate.toFixed(2));
-  const [quickAdjustVisible, setQuickAdjustVisible] = useState(false);
+
+  const defaultPrice = product.defaultBaseRate;
+  const defaultPlusPrice =
+    product.defaultPlusRate ?? Math.round(product.defaultBaseRate * 1.12);
+  const minThresholdPrice =
+    product.minThresholdRate ?? Math.round(product.defaultBaseRate * 0.9);
+
+  const [tempDefault, setTempDefault] = useState(defaultPrice.toFixed(2));
+  const [tempDefaultPlus, setTempDefaultPlus] = useState(
+    defaultPlusPrice.toFixed(2),
+  );
+  const [tempMinThreshold, setTempMinThreshold] = useState(
+    minThresholdPrice.toFixed(2),
+  );
+
+  const unit = product.unitMetric === "pcs" ? "pc" : product.unitMetric;
+
+  const handleStartEdit = () => {
+    setTempDefault(defaultPrice.toFixed(2));
+    setTempDefaultPlus(defaultPlusPrice.toFixed(2));
+    setTempMinThreshold(minThresholdPrice.toFixed(2));
+    setIsEditingRate(true);
+  };
 
   const handleSaveRate = () => {
-    const num = parseFloat(tempRate);
-    if (!isNaN(num) && num > 0) {
-      onUpdateRate(product.id, num);
+    const numDef = parseFloat(tempDefault);
+    const numPlus = parseFloat(tempDefaultPlus);
+    const numMin = parseFloat(tempMinThreshold);
+
+    if (!isNaN(numDef) && numDef > 0) {
+      const finalPlus =
+        !isNaN(numPlus) && numPlus > 0 ? numPlus : numDef * 1.12;
+      const finalMin = !isNaN(numMin) && numMin > 0 ? numMin : numDef * 0.9;
+      onUpdateRate(product.id, numDef, finalPlus, finalMin);
       setIsEditingRate(false);
     }
+    const finalDef = !isNaN(numDef) && numDef > 0 ? numDef : defaultPrice;
+    const finalPlus =
+      !isNaN(numPlus) && numPlus > 0 ? numPlus : defaultPlusPrice;
+    const finalMin = !isNaN(numMin) && numMin > 0 ? numMin : minThresholdPrice;
+
+    onUpdateRate(product.id, finalDef, finalPlus, finalMin);
+    setIsEditingRate(false);
+  };
+
+  const handleCancelEdit = () => {
+    setTempDefault(defaultPrice.toFixed(2));
+    setTempDefaultPlus(defaultPlusPrice.toFixed(2));
+    setTempMinThreshold(minThresholdPrice.toFixed(2));
+    setIsEditingRate(false);
   };
 
   return (
@@ -64,207 +111,214 @@ export const ProductItemCard: React.FC<ProductItemCardProps> = ({
         </View>
 
         {/* Status Badge */}
-        {product.isLowStock ? (
-          <View style={styles.lowStockBadge}>
-            <MaterialIcons
-              name="warning"
-              size={12}
-              color="#DC2626"
-              style={{ marginRight: 3 }}
-            />
-            <Text variant="labelSm" style={styles.lowStockText}>
-              LOW STOCK
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.activeBadge}>
-            <Text variant="labelSm" style={styles.activeBadgeText}>
-              {product.status}
-            </Text>
-          </View>
-        )}
+        <View style={styles.activeBadge}>
+          <Text variant="labelSm" style={styles.activeBadgeText}>
+            {product.status || "ACTIVE"}
+          </Text>
+        </View>
       </View>
 
-      {/* Pricing & Stock Details Panel */}
-      <View style={styles.detailsPanel}>
-        {/* Left Column: Default Unit Rate */}
-        <View style={styles.detailsCol}>
-          <Text variant="labelSm" color={COLORS.textSecondary}>
-            Default Unit Rate
-          </Text>
-          {isEditingRate ? (
-            <View style={styles.rateEditWrapper}>
-              <Text variant="tabularData" style={styles.rateCurrency}>
-                ₹
-              </Text>
-              <RNTextInput
-                value={tempRate}
-                onChangeText={setTempRate}
-                keyboardType="numeric"
-                autoFocus
-                style={styles.rateInput}
-              />
-              <Pressable
-                onPress={handleSaveRate}
-                style={styles.rateSaveBtn}
-                accessibilityRole="button"
-              >
-                <MaterialIcons name="check" size={14} color="#FFFFFF" />
-              </Pressable>
-              <Pressable
-                onPress={() => {
-                  setTempRate(product.defaultBaseRate.toFixed(2));
-                  setIsEditingRate(false);
-                }}
-                style={styles.rateCancelBtn}
-                accessibilityRole="button"
-              >
-                <MaterialIcons
-                  name="close"
-                  size={14}
-                  color={COLORS.textMuted}
-                />
-              </Pressable>
-            </View>
-          ) : (
-            <Text variant="tabularData" style={styles.rateValue}>
-              ₹{product.defaultBaseRate.toFixed(2)}{" "}
-              <Text variant="bodySm" color={COLORS.textSecondary}>
-                / {product.unitMetric === "pcs" ? "pc" : product.unitMetric}
-              </Text>
-            </Text>
-          )}
-
-          {product.secondaryRateDisplay ? (
+      {/* 3-Tier Pricing Details Panel */}
+      {!isEditingRate ? (
+        <View style={styles.pricingPanel}>
+          {/* 1. Default Price */}
+          <View style={styles.pricingCol}>
             <Text
               variant="labelSm"
               color={COLORS.textSecondary}
-              style={styles.secondaryRateText}
+              style={styles.colLabel}
             >
-              {product.secondaryRateDisplay}
+              Default Price
             </Text>
-          ) : null}
-        </View>
+            <Text variant="tabularData" style={styles.rateValue}>
+              ₹{defaultPrice.toFixed(2)}
+            </Text>
+            <Text
+              variant="bodySm"
+              color={COLORS.textMuted}
+              style={styles.unitSub}
+            >
+              per {unit}
+            </Text>
+          </View>
 
-        {/* Right Column: Current Warehouse Stock */}
-        <View style={styles.detailsCol}>
-          <Text variant="labelSm" color={COLORS.textSecondary}>
-            Current Warehouse Stock
-          </Text>
+          <View style={styles.colDivider} />
+
+          {/* 2. Default+ Price */}
+          <View style={styles.pricingCol}>
+            <View style={styles.plusLabelRow}>
+              <Text
+                variant="labelSm"
+                color={COLORS.primary}
+                style={[styles.colLabel, styles.plusColLabel]}
+              >
+                Default+ Price
+              </Text>
+            </View>
+            <Text
+              variant="tabularData"
+              style={[styles.rateValue, styles.plusRateValue]}
+            >
+              ₹{defaultPlusPrice.toFixed(2)}
+            </Text>
+            <Text
+              variant="bodySm"
+              color={COLORS.textMuted}
+              style={styles.unitSub}
+            >
+              premium / credit
+            </Text>
+          </View>
+
+          <View style={styles.colDivider} />
+
+          {/* 3. Minimum Threshold Price */}
+          <View style={styles.pricingCol}>
+            <Text
+              variant="labelSm"
+              color={COLORS.textSecondary}
+              style={styles.colLabel}
+            >
+              Min Threshold
+            </Text>
+            <Text
+              variant="tabularData"
+              style={[styles.rateValue, styles.minRateValue]}
+            >
+              ₹{minThresholdPrice.toFixed(2)}
+            </Text>
+            <Text
+              variant="bodySm"
+              color={COLORS.textMuted}
+              style={styles.unitSub}
+            >
+              floor rate
+            </Text>
+          </View>
+        </View>
+      ) : (
+        /* Edit Mode: 3 Inputs */
+        <View style={styles.editPanel}>
           <Text
-            variant="tabularData"
-            style={[
-              styles.stockValue,
-              product.isLowStock && styles.stockValueLow,
-            ]}
+            variant="labelSm"
+            color={COLORS.textSecondary}
+            style={styles.editPanelTitle}
           >
-            {product.warehouseStockDisplay}{" "}
-            {!product.isLowStock && product.stockSubtext ? (
-              <Text variant="bodySm" color={COLORS.textSecondary}>
-                {product.stockSubtext}
-              </Text>
-            ) : null}
+            Update Pricing Tiers (₹ / {unit})
           </Text>
 
-          {product.isLowStock && product.stockSubtext ? (
-            <Text variant="labelSm" style={styles.lowStockSubtext}>
-              {product.stockSubtext}
-            </Text>
-          ) : null}
-        </View>
-      </View>
+          <View style={styles.editInputsGrid}>
+            <View style={styles.editField}>
+              <Text
+                variant="labelSm"
+                color={COLORS.textSecondary}
+                style={styles.inputFieldLabel}
+              >
+                Default Price
+              </Text>
+              <View style={styles.inputWrapper}>
+                <Text style={styles.currencyPrefix}>₹</Text>
+                <RNTextInput
+                  value={tempDefault}
+                  onChangeText={setTempDefault}
+                  keyboardType="numeric"
+                  style={styles.rateInput}
+                />
+              </View>
+            </View>
 
-      {/* Quick Adjust Strip (Collapsible inline) */}
-      {quickAdjustVisible && (
-        <View style={styles.quickAdjustStrip}>
-          <Text variant="labelSm" color={COLORS.textSecondary}>
-            Adjust Warehouse Stock:
-          </Text>
-          <View style={styles.adjustActions}>
+            <View style={styles.editField}>
+              <Text
+                variant="labelSm"
+                color={COLORS.primary}
+                style={styles.inputFieldLabel}
+              >
+                Default+ Price
+              </Text>
+              <View style={styles.inputWrapper}>
+                <Text style={styles.currencyPrefix}>₹</Text>
+                <RNTextInput
+                  value={tempDefaultPlus}
+                  onChangeText={setTempDefaultPlus}
+                  keyboardType="numeric"
+                  style={styles.rateInput}
+                />
+              </View>
+            </View>
+
+            <View style={styles.editField}>
+              <Text
+                variant="labelSm"
+                color={COLORS.textSecondary}
+                style={styles.inputFieldLabel}
+              >
+                Min Threshold
+              </Text>
+              <View style={styles.inputWrapper}>
+                <Text style={styles.currencyPrefix}>₹</Text>
+                <RNTextInput
+                  value={tempMinThreshold}
+                  onChangeText={setTempMinThreshold}
+                  keyboardType="numeric"
+                  style={styles.rateInput}
+                />
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.editActionsRow}>
             <Pressable
-              onPress={() => onQuickAdjustStock(product.id, -10)}
-              style={styles.adjustBtn}
+              onPress={handleCancelEdit}
+              style={styles.cancelBtn}
+              accessibilityRole="button"
             >
-              <Text variant="labelSm" style={styles.adjustBtnText}>
-                -10
+              <MaterialIcons
+                name="close"
+                size={14}
+                color={COLORS.textSecondary}
+              />
+              <Text variant="labelSm" color={COLORS.textSecondary}>
+                Cancel
               </Text>
             </Pressable>
+
             <Pressable
-              onPress={() => onQuickAdjustStock(product.id, +10)}
-              style={styles.adjustBtn}
+              onPress={handleSaveRate}
+              style={styles.saveBtn}
+              accessibilityRole="button"
             >
-              <Text variant="labelSm" style={styles.adjustBtnText}>
-                +10
+              <MaterialIcons name="check" size={14} color="#FFFFFF" />
+              <Text variant="labelSm" style={styles.saveBtnText}>
+                Save Pricing
               </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => onQuickAdjustStock(product.id, +50)}
-              style={styles.adjustBtn}
-            >
-              <Text variant="labelSm" style={styles.adjustBtnText}>
-                +50
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setQuickAdjustVisible(false)}
-              style={styles.adjustCloseBtn}
-            >
-              <MaterialIcons name="done" size={14} color={COLORS.secondary} />
             </Pressable>
           </View>
         </View>
       )}
 
       {/* Bottom Actions Row */}
-      <View style={styles.bottomActions}>
-        <Pressable
-          onPress={() => {
-            setIsEditingRate(!isEditingRate);
-            setTempRate(product.defaultBaseRate.toFixed(2));
-          }}
-          style={({ pressed }: any) => [
-            styles.actionBtn,
-            pressed && styles.pressed,
-          ]}
-          accessibilityRole="button"
-        >
-          <MaterialIcons
-            name="edit"
-            size={15}
-            color={COLORS.textPrimary}
-            style={{ marginRight: 4 }}
-          />
-          <Text variant="labelMd" style={styles.actionBtnText}>
-            {isEditingRate ? "Done" : "Edit Rate"}
-          </Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => setQuickAdjustVisible(!quickAdjustVisible)}
-          style={({ pressed }: any) => [
-            styles.actionBtn,
-            pressed && styles.pressed,
-            quickAdjustVisible && styles.actionBtnActive,
-          ]}
-          accessibilityRole="button"
-        >
-          <MaterialIcons
-            name="sync-alt"
-            size={15}
-            color={quickAdjustVisible ? COLORS.secondary : COLORS.textPrimary}
-            style={{ marginRight: 4 }}
-          />
-          <Text
-            variant="labelMd"
-            style={[
-              styles.actionBtnText,
-              quickAdjustVisible && { color: COLORS.secondary },
+      {!isEditingRate && (
+        <View style={styles.bottomActions}>
+          <Pressable
+            onPress={handleStartEdit}
+            style={({ pressed }: any) => [
+              styles.actionBtn,
+              pressed && styles.pressed,
             ]}
+            accessibilityRole="button"
           >
-            Quick Adjust
-          </Text>
-        </Pressable>
-      </View>
+            <MaterialIcons
+              name="edit"
+              size={14}
+              color={COLORS.textPrimary}
+              style={{ marginRight: 4 }}
+            />
+            <Text variant="labelMd" style={styles.actionBtnText}>
+              Edit Pricing
+            </Text>
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 };
@@ -341,143 +395,159 @@ const styles = StyleSheet.create({
     color: "#059669",
     fontWeight: "600",
   },
-  lowStockBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: RADIUS.xs,
-    backgroundColor: "#FEE2E2",
-  },
-  lowStockText: {
-    fontSize: 11,
-    lineHeight: 14,
-    color: "#DC2626",
-    fontWeight: "600",
-  },
-  detailsPanel: {
+
+  // 3-Tier Pricing Panel
+  pricingPanel: {
     marginTop: SPACING.spaceSm + 2,
     backgroundColor: "#F8FAFC",
-    padding: SPACING.spaceSm + 2,
+    paddingVertical: SPACING.spaceSm + 2,
+    paddingHorizontal: SPACING.spaceSm,
     borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.borderSubtle,
     flexDirection: "row",
-    gap: SPACING.spaceSm,
+    alignItems: "center",
   },
-  detailsCol: {
+  pricingCol: {
     flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+  },
+  colDivider: {
+    width: 1,
+    height: 36,
+    backgroundColor: COLORS.border,
+  },
+  colLabel: {
+    fontSize: 10,
+    fontWeight: "600",
+    letterSpacing: 0.2,
+    textTransform: "uppercase",
+  },
+  plusLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
+  plusColLabel: {
+    color: COLORS.primary,
   },
   rateValue: {
     fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "600",
+    lineHeight: 18,
+    fontWeight: "700",
     color: COLORS.textPrimary,
-    marginTop: 3,
   },
-  rateEditWrapper: {
+  plusRateValue: {
+    color: COLORS.primary,
+  },
+  minRateValue: {
+    color: COLORS.statusOverdueText,
+  },
+  unitSub: {
+    fontSize: 10,
+    marginTop: 1,
+  },
+
+  // Edit Mode Panel
+  editPanel: {
+    marginTop: SPACING.spaceSm + 2,
+    backgroundColor: "#F8FAFC",
+    padding: SPACING.spaceSm + 4,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    gap: SPACING.spaceSm,
+  },
+  editPanelTitle: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  editInputsGrid: {
+    flexDirection: "row",
+    gap: SPACING.spaceSm,
+  },
+  editField: {
+    flex: 1,
+    gap: 3,
+  },
+  inputFieldLabel: {
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    marginTop: 2,
-  },
-  rateCurrency: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: COLORS.textPrimary,
-  },
-  rateInput: {
-    height: 26,
-    width: 65,
+    height: 32,
     borderWidth: 1,
-    borderColor: COLORS.secondary,
+    borderColor: COLORS.border,
     borderRadius: RADIUS.xs,
     backgroundColor: "#FFFFFF",
-    paddingHorizontal: 4,
+    paddingHorizontal: 6,
+  },
+  currencyPrefix: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    marginRight: 2,
+    fontWeight: "600",
+  },
+  rateInput: {
+    flex: 1,
     fontSize: 12,
     fontWeight: "600",
     color: COLORS.textPrimary,
+    padding: 0,
+    ...Platform.select({
+      web: { outlineStyle: "none" as any },
+    }),
   },
-  rateSaveBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: RADIUS.xs,
-    backgroundColor: COLORS.secondary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  rateCancelBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: RADIUS.xs,
-    backgroundColor: "#F1F5F9",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  secondaryRateText: {
-    fontSize: 11,
-    marginTop: 2,
-  },
-  stockValue: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "600",
-    color: COLORS.textPrimary,
-    marginTop: 3,
-  },
-  stockValueLow: {
-    color: "#DC2626",
-  },
-  lowStockSubtext: {
-    fontSize: 11,
-    color: "#DC2626",
-    marginTop: 2,
-    fontWeight: "500",
-  },
-  quickAdjustStrip: {
-    marginTop: SPACING.spaceSm,
-    padding: SPACING.spaceSm,
-    backgroundColor: "#EFF6FF",
-    borderRadius: RADIUS.sm,
-    borderWidth: 1,
-    borderColor: "#BFDBFE",
+  editActionsRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
+    gap: SPACING.spaceSm,
+    marginTop: 2,
   },
-  adjustActions: {
+  cancelBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-  },
-  adjustBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    gap: 4,
+    height: 28,
+    paddingHorizontal: SPACING.spaceSm,
     borderRadius: RADIUS.xs,
-    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#93C5FD",
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    ...Platform.select({ web: { cursor: "pointer" } }),
   },
-  adjustBtnText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: COLORS.secondary,
-  },
-  adjustCloseBtn: {
-    padding: 3,
+  saveBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    height: 28,
+    paddingHorizontal: SPACING.spaceSm + 4,
     borderRadius: RADIUS.xs,
-    backgroundColor: "#DBEAFE",
-    marginLeft: 4,
+    backgroundColor: COLORS.primary,
+    ...Platform.select({ web: { cursor: "pointer" } }),
   },
+  saveBtnText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 11,
+  },
+
+  // Bottom Actions Row
   bottomActions: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-end",
-    gap: SPACING.spaceXs + 2,
     paddingTop: SPACING.spaceSm,
   },
   actionBtn: {
-    height: 32,
-    paddingHorizontal: SPACING.spaceSm + 2,
-    borderRadius: RADIUS.sm,
+    height: 30,
+    paddingHorizontal: SPACING.spaceSm + 4,
+    borderRadius: RADIUS.xs,
     backgroundColor: "#F1F5F9",
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -490,10 +560,6 @@ const styles = StyleSheet.create({
         transitionDuration: "150ms",
       },
     }),
-  },
-  actionBtnActive: {
-    backgroundColor: "#EFF6FF",
-    borderColor: "#93C5FD",
   },
   actionBtnText: {
     fontSize: 12,

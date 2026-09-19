@@ -103,13 +103,6 @@ export const SupervisorDispatchMobileEmbed: React.FC = () => {
           >
             Outbound Dispatch
           </Text>
-          <Text
-            variant="bodySm"
-            color={COLORS.textSecondary}
-            style={{ fontSize: 11 }}
-          >
-            Dock Bay 3 • Active Vehicle Loading
-          </Text>
         </View>
         <Badge label="Ready for Seal" variant="ready_for_seal" />
       </View>
@@ -249,14 +242,6 @@ export const SupervisorDispatchMobileEmbed: React.FC = () => {
                 placeholder="Driver Name"
                 size="sm"
               />
-              <Text
-                variant="bodySm"
-                color={COLORS.textMuted}
-                style={styles.fieldHelper}
-                numberOfLines={1}
-              >
-                DL: TN-07-2018-884712
-              </Text>
             </View>
 
             {/* Driver Phone */}
@@ -317,14 +302,6 @@ export const SupervisorDispatchMobileEmbed: React.FC = () => {
                 mono
                 size="sm"
               />
-              <Text
-                variant="bodySm"
-                color={COLORS.statusPaidText}
-                style={styles.fieldHelper}
-                numberOfLines={1}
-              >
-                VAHAN verified ✓
-              </Text>
             </View>
 
             {/* Load ID */}

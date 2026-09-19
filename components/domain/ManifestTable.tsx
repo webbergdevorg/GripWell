@@ -70,7 +70,7 @@ export const ManifestTable: React.FC<ManifestTableProps> = ({
             color={COLORS.textMuted}
             style={styles.sectionTitle}
           >
-            2. MANIFEST & QUANTITIES
+            2. PRODUCTS & QUANTITIES
           </Text>
           <Pressable
             onPress={() => setIsAdding(!isAdding)}
@@ -257,13 +257,6 @@ export const ManifestTable: React.FC<ManifestTableProps> = ({
 
         {/* Footer info & Total Count */}
         <View style={styles.tableFooter}>
-          <Text
-            variant="bodySm"
-            color={COLORS.textMuted}
-            style={styles.footerNote}
-          >
-            Pricing & freight billing managed by Office Admin
-          </Text>
           <View style={styles.totalBadge}>
             <Text variant="bodySm" color={COLORS.textSecondary}>
               Total Count:

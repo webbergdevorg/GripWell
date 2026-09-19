@@ -19,6 +19,8 @@ export type BadgeVariant =
   | "uncalibrated"
   | "credit"
   | "overdue"
+  | "ready_for_seal"
+  | "default"
   | "neutral";
 
 export interface BadgeProps {

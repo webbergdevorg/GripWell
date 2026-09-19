@@ -5,9 +5,9 @@
  */
 
 import {
-    AdvanceDepositItem,
-    CreditLedgerItem,
-    CreditLedgerKPISummary,
+  AdvanceDepositItem,
+  CreditLedgerItem,
+  CreditLedgerKPISummary,
 } from "../types/models";
 
 export const INITIAL_CREDIT_KPIS: CreditLedgerKPISummary = {

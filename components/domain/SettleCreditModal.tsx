@@ -7,12 +7,12 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
-    Modal,
-    Platform,
-    Pressable,
-    TextInput as RNTextInput,
-    StyleSheet,
-    View,
+  Modal,
+  Platform,
+  Pressable,
+  TextInput as RNTextInput,
+  StyleSheet,
+  View,
 } from "react-native";
 import { COLORS } from "../../constants/colors";
 import { RADIUS, SPACING } from "../../constants/spacing";

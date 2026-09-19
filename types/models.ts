@@ -2,16 +2,18 @@
  * Gripwellgistics & Billing Domain Models
  */
 
-export type PaymentMode = "cash" | "upi" | "credit" | "bank_transfer";
+export type PaymentMode = "cash" | "online" | "credit";
 
 export type ConsignmentStatus =
   | "settled"
-  | "calibrating"
+  | "settling"
   | "pending"
   | "credit"
-  | "uncalibrated"
+  | "unsettled"
   | "staging"
   | "ready_for_seal"
+  | "calibrating"
+  | "uncalibrated"
   | "void";
 
 export interface LineItem {
@@ -125,11 +127,13 @@ export interface ProductSKU {
   status: ProductStatus;
   unitMetric: string;
   defaultBaseRate: number;
+  defaultPlusRate?: number;
+  minThresholdRate?: number;
   rateDisplay: string;
   secondaryRateDisplay?: string;
-  warehouseStock: number;
-  warehouseStockDisplay: string;
-  stockSubtext: string;
+  warehouseStock?: number;
+  warehouseStockDisplay?: string;
+  stockSubtext?: string;
   hsnCode: string;
   isLowStock?: boolean;
 }
@@ -177,8 +181,10 @@ export interface AdvanceDepositItem {
   totalAdvance: number;
   applied: number;
   remaining: number;
-  allocation: string;
+  allocation?: string;
   appliedMapping?: AdvanceMappingEntry[];
+  appliedMappings?: AdvanceMappingEntry[];
+  depositSlipFilename?: string;
 }
 
 export interface CreditLedgerKPISummary {
@@ -217,7 +223,6 @@ export interface GatePass {
   customerName: string; // 'Sri Murugan Traders'
   destinationHub: string; // 'Salem Hub, Yard 2'
   dockBay: string; // 'Dock Bay 3'
-  supervisorName: string; // 'M. Vance'
   securitySealNumber: string; // 'SEAL-88421-TAMPER-SAFE'
   sealVerified: boolean;
   totalPieceCount: number; // 80

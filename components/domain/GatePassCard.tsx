@@ -189,13 +189,6 @@ export const GatePassCard: React.FC<GatePassCardProps> = ({
                 {pass.vehicleNumber}
               </Text>
             </View>
-            <Text
-              variant="bodySm"
-              color={COLORS.statusPaidText}
-              style={{ fontSize: 11, fontWeight: "500" }}
-            >
-              VAHAN verified ✓
-            </Text>
           </View>
 
           {/* Box 2: Driver Info */}
@@ -263,7 +256,7 @@ export const GatePassCard: React.FC<GatePassCardProps> = ({
               color={COLORS.textMuted}
               style={styles.detailLabel}
             >
-              DISPATCH DOCK BAY
+              DISPATCH
             </Text>
             <View style={styles.bayBadgeRow}>
               <View style={styles.bayDot} />
@@ -275,13 +268,6 @@ export const GatePassCard: React.FC<GatePassCardProps> = ({
                 {pass.dockBay}
               </Text>
             </View>
-            <Text
-              variant="bodySm"
-              color={COLORS.textSecondary}
-              style={{ fontSize: 11 }}
-            >
-              Inspected by: {pass.supervisorName} (Supervisor)
-            </Text>
           </View>
         </View>
 

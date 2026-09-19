@@ -40,7 +40,7 @@ export const DockMonitorPanel: React.FC<DockMonitorPanelProps> = ({
           color={COLORS.textMuted}
           style={styles.sectionTitle}
         >
-          TODAY AT DOCK
+          TODAY DISPATCH
         </Text>
         <View style={styles.metricsGrid}>
           {/* Dispatched */}
@@ -67,31 +67,6 @@ export const DockMonitorPanel: React.FC<DockMonitorPanelProps> = ({
               240 units
             </Text>
           </View>
-
-          {/* Daily Target */}
-          <View style={styles.metricCard}>
-            <Text
-              variant="labelSm"
-              color={COLORS.textMuted}
-              style={styles.metricLabel}
-            >
-              Daily Target
-            </Text>
-            <Text
-              variant="headlineSm"
-              color={COLORS.textPrimary}
-              style={styles.metricValue}
-            >
-              75%
-            </Text>
-            <Text
-              variant="labelSm"
-              color={COLORS.textMuted}
-              style={styles.metricSub}
-            >
-              3 / 4 completed
-            </Text>
-          </View>
         </View>
       </View>
 
@@ -104,13 +79,6 @@ export const DockMonitorPanel: React.FC<DockMonitorPanelProps> = ({
             style={styles.sectionTitle}
           >
             RECENT LOADS
-          </Text>
-          <Text
-            variant="labelSm"
-            color={COLORS.textMuted}
-            style={styles.readOnlyText}
-          >
-            Read-only
           </Text>
         </View>
 
@@ -143,23 +111,6 @@ export const DockMonitorPanel: React.FC<DockMonitorPanelProps> = ({
                   {load.dispatchTime.replace("Today ", "")}
                 </Text>
               </View>
-
-              <Badge
-                label={
-                  load.status === "settled"
-                    ? "Paid"
-                    : load.status === "credit"
-                      ? "Credit"
-                      : "Pending"
-                }
-                variant={
-                  load.status === "settled"
-                    ? "paid"
-                    : load.status === "credit"
-                      ? "credit"
-                      : "pending"
-                }
-              />
             </View>
           ))}
         </View>
@@ -167,14 +118,6 @@ export const DockMonitorPanel: React.FC<DockMonitorPanelProps> = ({
 
       {/* 3. Dispatch Actions */}
       <View style={styles.actionsSection}>
-        <Text
-          variant="labelSm"
-          color={COLORS.textMuted}
-          style={styles.sectionTitle}
-        >
-          DISPATCH ACTIONS
-        </Text>
-
         {gatePassIssued ? (
           <View style={{ gap: 8 }}>
             <Button

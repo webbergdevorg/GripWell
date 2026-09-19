@@ -4,9 +4,9 @@
 
 import React from "react";
 import {
-    Text as RNText,
-    TextProps as RNTextProps,
-    StyleSheet,
+  Text as RNText,
+  TextProps as RNTextProps,
+  StyleSheet,
 } from "react-native";
 import { COLORS } from "../../constants/colors";
 import { TYPOGRAPHY, TypographyVariant } from "../../constants/typography";
